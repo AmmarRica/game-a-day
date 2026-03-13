@@ -3,9 +3,14 @@
  * generate.js – scaffold a new day entry
  *
  * Usage:
- *   node scripts/generate.js          # auto-detects next day number
- *   node scripts/generate.js 04       # creates day-04/index.html
- *   node scripts/generate.js 04 "Snake Clone"
+ *   node scripts/generate.js                        # today's date, auto-sequence, default title
+ *   node scripts/generate.js "Snake Clone"          # today's date, auto-sequence, given title
+ *   node scripts/generate.js "Snake Clone" 20260313 # specific date
+ *
+ * Output filename: YYYYMMDD-xx-gamename.html
+ *   YYYYMMDD – calendar date
+ *   xx       – sequence number within that day (increments when multiple games share a date)
+ *   gamename – URL-safe slug derived from the title
  */
 
 const fs = require('fs');
@@ -17,21 +22,38 @@ function zeroPad(n) {
   return String(n).padStart(2, '0');
 }
 
-function nextDayNumber() {
-  const dirs = fs.readdirSync(ROOT).filter(d => /^day-\d+$/.test(d));
-  if (dirs.length === 0) return 1;
-  const nums = dirs.map(d => parseInt(d.replace('day-', ''), 10));
-  return Math.max(...nums) + 1;
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = zeroPad(d.getMonth() + 1);
+  const day = zeroPad(d.getDate());
+  return `${y}${m}${day}`;
 }
 
-function gameTemplate(dayNum, title) {
-  const num = zeroPad(dayNum);
+function slugify(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function nextSeqForDate(dateStr) {
+  const pattern = new RegExp(`^${dateStr}-([0-9]{2})-.+\\.html$`);
+  const seqs = fs.readdirSync(ROOT)
+    .map(f => { const m = pattern.exec(f); return m ? parseInt(m[1], 10) : NaN; })
+    .filter(n => !isNaN(n));
+  if (seqs.length === 0) return 1;
+  return Math.max(...seqs) + 1;
+}
+
+function gameTemplate(dateStr, seq, title) {
+  const num = zeroPad(seq);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Day ${num} – Game a Day</title>
+  <title>${title} – Game a Day</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -79,9 +101,9 @@ function gameTemplate(dayNum, title) {
   </style>
 </head>
 <body>
-  <nav><a href="../index.html">&larr; Back to gallery</a></nav>
-  <h1>Day ${num}</h1>
-  <p class="subtitle">${title} – work in progress</p>
+  <nav><a href="index.html">&larr; Back to gallery</a></nav>
+  <h1>${title}</h1>
+  <p class="subtitle">${dateStr} #${num} – work in progress</p>
   <canvas id="game" width="480" height="320"></canvas>
 
   <script>
@@ -91,29 +113,29 @@ function gameTemplate(dayNum, title) {
     ctx.fillStyle = '#a78bfa';
     ctx.font = 'bold 24px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText('Day ${num} – work in progress', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('${title} – work in progress', canvas.width / 2, canvas.height / 2);
   </script>
 </body>
 </html>
 `;
 }
 
-function galleryCard(dayNum, title) {
-  const num = zeroPad(dayNum);
-  return `    <a class="card" href="day-${num}/index.html">
+function galleryCard(fileName, dateStr, seq, title) {
+  const num = zeroPad(seq);
+  return `    <a class="card" href="${fileName}">
       <div class="day-number">${num}</div>
-      <div class="day-label">Day ${dayNum}</div>
+      <div class="day-label">${dateStr}</div>
       <div class="day-title">${title}</div>
     </a>`;
 }
 
-function addCardToGallery(dayNum, title) {
+function addCardToGallery(fileName, dateStr, seq, title) {
   const indexPath = path.join(ROOT, 'index.html');
   if (!fs.existsSync(indexPath)) return;
 
   let html = fs.readFileSync(indexPath, 'utf8');
   const marker = '</main>';
-  const card = galleryCard(dayNum, title);
+  const card = galleryCard(fileName, dateStr, seq, title);
 
   if (html.includes(marker)) {
     html = html.replace(marker, `${card}\n  ${marker}`);
@@ -124,26 +146,26 @@ function addCardToGallery(dayNum, title) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
-const [, , argDay, ...titleWords] = process.argv;
+const [, , argTitle, argDate] = process.argv;
 
-const dayNum = argDay ? parseInt(argDay, 10) : nextDayNumber();
-if (isNaN(dayNum) || dayNum < 1) {
-  console.error('Invalid day number.');
+const dateStr = argDate || todayStr();
+if (!/^[0-9]{8}$/.test(dateStr)) {
+  console.error('Invalid date. Expected YYYYMMDD format.');
   process.exit(1);
 }
 
-const title = titleWords.length ? titleWords.join(' ') : `Game ${zeroPad(dayNum)}`;
-const dirName = `day-${zeroPad(dayNum)}`;
-const dirPath = path.join(ROOT, dirName);
-const filePath = path.join(dirPath, 'index.html');
+const seq = nextSeqForDate(dateStr);
+const title = argTitle || `Game ${zeroPad(seq)}`;
+const slug = slugify(title);
+const fileName = `${dateStr}-${zeroPad(seq)}-${slug}.html`;
+const filePath = path.join(ROOT, fileName);
 
 if (fs.existsSync(filePath)) {
   console.error(`${filePath} already exists.`);
   process.exit(1);
 }
 
-fs.mkdirSync(dirPath, { recursive: true });
-fs.writeFileSync(filePath, gameTemplate(dayNum, title), 'utf8');
+fs.writeFileSync(filePath, gameTemplate(dateStr, seq, title), 'utf8');
 
-console.log(`✓ Created ${dirName}/index.html`);
-addCardToGallery(dayNum, title);
+console.log(`✓ Created ${fileName}`);
+addCardToGallery(fileName, dateStr, seq, title);
