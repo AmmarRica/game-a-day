@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game a Day</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      letter-spacing: 0.05em;
+      color: #a78bfa;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #9ca3af;
+      font-size: 1.1rem;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #1e1e2e;
+      border: 1px solid #3b3b5c;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #a78bfa;
+    }
+
+    .card .day-number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #a78bfa;
+    }
+
+    .card .day-label {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-top: 0.25rem;
+    }
+
+    .card .day-title {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      color: #e0e0ff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎮 Game a Day</h1>
+    <p>One small game built every day.</p>
+  </header>
+
+  <main class="gallery">
+    <a class="card" href="day-01/index.html">
+      <div class="day-number">01</div>
+      <div class="day-label">Day 1</div>
+      <div class="day-title">Game 01</div>
+    </a>
+    <a class="card" href="day-02/index.html">
+      <div class="day-number">02</div>
+      <div class="day-label">Day 2</div>
+      <div class="day-title">Game 02</div>
+    </a>
+    <a class="card" href="day-03/index.html">
+      <div class="day-number">03</div>
+      <div class="day-label">Day 3</div>
+      <div class="day-title">Game 03</div>
+    </a>
+  </main>
+</body>
+</html>
