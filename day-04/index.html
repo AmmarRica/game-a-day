@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Day 04 – Barbuta – Game a Day</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+      touch-action: none;
+      overflow: hidden;
+    }
+    nav { width: 100%; max-width: 480px; margin-bottom: 0.5rem; }
+    nav a { color: #a78bfa; text-decoration: none; font-size: 0.95rem; }
+    nav a:hover { text-decoration: underline; }
+    h1 { font-size: 1.5rem; color: #a78bfa; margin-bottom: 0.25rem; }
+    p.subtitle { color: #9ca3af; margin-bottom: 0.5rem; font-size: 0.85rem; }
+    canvas {
+      border: 2px solid #3b3b5c;
+      border-radius: 8px;
+      background: #1e1e2e;
+      max-width: 480px;
+      width: 100%;
+      touch-action: none;
+    }
+    #ui { color: #9ca3af; margin-top: 0.5rem; font-size: 0.8rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">← Back</a></nav>
+  <h1>Barbuta</h1>
+  <p class="subtitle">Tap left/right to move, tap top to jump. Collect all gems!</p>
+  <canvas id="game"></canvas>
+  <div id="ui">Room 1 | Gems: 0/0 | Lives: 3</div>
+  <script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const ui = document.getElementById('ui');
+
+let W, H, scale;
+function resize() {
+  const maxW = 480, maxH = 640;
+  const ratio = maxW / maxH;
+  let w = Math.min(window.innerWidth - 20, maxW);
+  let h = w / ratio;
+  if (h > window.innerHeight - 140) { h = window.innerHeight - 140; w = h * ratio; }
+  canvas.width = maxW; canvas.height = maxH;
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  W = maxW; H = maxH;
+  scale = w / maxW;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const TILE = 32;
+const COLS = Math.floor(W / TILE);
+const ROWS = Math.floor(H / TILE);
+const GRAVITY = 0.5;
+const JUMP_VEL = -10;
+const MOVE_SPEED = 3.5;
+
+const COLORS = {
+  wall: '#3b3b5c', floor: '#2a2a3e', gem: '#a78bfa', gemGlow: '#c4b5fd',
+  player: '#60a5fa', playerEye: '#ffffff', spike: '#ef4444',
+  door: '#fbbf24', doorFrame: '#92400e', bg: '#1e1e2e',
+  platform: '#4b5563', ladder: '#92400e'
+};
+
+let player, gems, room, roomNum, lives, totalGems, gameState, deathTimer;
+let particles = [];
+
+class Player {
+  constructor(x, y) {
+    this.x = x; this.y = y; this.w = 22; this.h = 28;
+    this.vx = 0; this.vy = 0; this.onGround = false;
+    this.facing = 1; this.moveDir = 0; this.jumping = false;
+    this.frameTimer = 0; this.frame = 0;
+  }
+}
+
+function generateRoom(num) {
+  const grid = [];
+  const seed = num * 7 + 13;
+  const rng = (() => { let s = seed; return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; }; })();
+
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) {
+        grid[r][c] = 1; // wall
+      } else {
+        grid[r][c] = 0; // empty
+      }
+    }
+  }
+
+  // Generate platforms
+  const platformCount = 4 + Math.floor(rng() * 3) + Math.min(num, 5);
+  for (let i = 0; i < platformCount; i++) {
+    const pw = 2 + Math.floor(rng() * 5);
+    const px = 1 + Math.floor(rng() * (COLS - pw - 2));
+    const py = 3 + Math.floor(rng() * (ROWS - 6));
+    for (let c = px; c < px + pw && c < COLS - 1; c++) {
+      if (grid[py][c] === 0) grid[py][c] = 2; // platform
+    }
+  }
+
+  // Place spikes (more with higher rooms)
+  const spikeCount = 1 + Math.floor(rng() * 2) + Math.min(num, 4);
+  const spikes = [];
+  for (let i = 0; i < spikeCount; i++) {
+    let sx, sy, tries = 0;
+    do {
+      sx = 2 + Math.floor(rng() * (COLS - 4));
+      sy = 2 + Math.floor(rng() * (ROWS - 4));
+      tries++;
+    } while ((grid[sy][sx] !== 0 || (sx < 4 && sy > ROWS - 5)) && tries < 50);
+    if (tries < 50) { grid[sy][sx] = 3; spikes.push({x: sx, y: sy}); }
+  }
+
+  // Place gems
+  const gemCount = 3 + Math.floor(rng() * 3) + Math.min(num, 3);
+  const gemList = [];
+  for (let i = 0; i < gemCount; i++) {
+    let gx, gy, tries = 0;
+    do {
+      gx = 2 + Math.floor(rng() * (COLS - 4));
+      gy = 2 + Math.floor(rng() * (ROWS - 4));
+      tries++;
+    } while (grid[gy][gx] !== 0 && tries < 50);
+    if (tries < 50) { gemList.push({x: gx * TILE + TILE/2, y: gy * TILE + TILE/2, collected: false}); }
+  }
+
+  // Door location (upper area)
+  let doorX = COLS - 3, doorY = 1;
+  for (let r = 2; r < ROWS - 2; r++) {
+    if (grid[r][COLS-2] === 2 || grid[r][COLS-2] === 1) {
+      doorY = r - 1; break;
+    }
+  }
+  grid[doorY][doorX] = 0; // ensure door tile is clear
+
+  return { grid, gems: gemList, door: {x: doorX * TILE, y: doorY * TILE}, spawnX: 2 * TILE, spawnY: (ROWS - 2) * TILE - 28 };
+}
+
+function init() {
+  roomNum = 1; lives = 3; gameState = 'play'; deathTimer = 0;
+  loadRoom(roomNum);
+}
+
+function loadRoom(num) {
+  room = generateRoom(num);
+  gems = room.gems;
+  totalGems = gems.length;
+  player = new Player(room.spawnX, room.spawnY);
+  particles = [];
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6 - 2,
+      life: 30 + Math.random() * 20, maxLife: 50, color, size: 2 + Math.random() * 3
+    });
+  }
+}
+
+function tileAt(col, row) {
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return 1;
+  return room.grid[row][col];
+}
+
+function isSolid(col, row) {
+  const t = tileAt(col, row);
+  return t === 1 || t === 2;
+}
+
+function collidePlayer(p) {
+  // Horizontal
+  p.x += p.vx;
+  const left = Math.floor(p.x / TILE);
+  const right = Math.floor((p.x + p.w - 1) / TILE);
+  const top = Math.floor(p.y / TILE);
+  const bot = Math.floor((p.y + p.h - 1) / TILE);
+
+  for (let r = top; r <= bot; r++) {
+    if (isSolid(left, r) && p.vx < 0) { p.x = (left + 1) * TILE; p.vx = 0; }
+    if (isSolid(right, r) && p.vx > 0) { p.x = right * TILE - p.w; p.vx = 0; }
+  }
+
+  // Vertical
+  p.y += p.vy;
+  const left2 = Math.floor(p.x / TILE);
+  const right2 = Math.floor((p.x + p.w - 1) / TILE);
+  const top2 = Math.floor(p.y / TILE);
+  const bot2 = Math.floor((p.y + p.h - 1) / TILE);
+  p.onGround = false;
+
+  for (let c = left2; c <= right2; c++) {
+    if (isSolid(c, top2) && p.vy < 0) { p.y = (top2 + 1) * TILE; p.vy = 0; }
+    if (isSolid(c, bot2) && p.vy > 0) { p.y = bot2 * TILE - p.h; p.vy = 0; p.onGround = true; }
+  }
+
+  // Spike check
+  const cx = Math.floor((p.x + p.w / 2) / TILE);
+  const cy = Math.floor((p.y + p.h / 2) / TILE);
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const tr = cy + dr, tc = cx + dc;
+      if (tileAt(tc, tr) === 3) {
+        const sx = tc * TILE, sy = tr * TILE;
+        if (p.x + p.w > sx + 4 && p.x < sx + TILE - 4 && p.y + p.h > sy + 4 && p.y < sy + TILE - 4) {
+          return 'spike';
+        }
+      }
+    }
+  }
+  return 'ok';
+}
+
+function update() {
+  if (gameState === 'dead') {
+    deathTimer--;
+    if (deathTimer <= 0) {
+      if (lives <= 0) { gameState = 'gameover'; return; }
+      loadRoom(roomNum);
+      gameState = 'play';
+    }
+    updateParticles();
+    return;
+  }
+  if (gameState === 'gameover' || gameState === 'win') return;
+
+  const p = player;
+  p.vx = p.moveDir * MOVE_SPEED;
+  if (p.moveDir !== 0) p.facing = p.moveDir;
+  p.vy += GRAVITY;
+  if (p.vy > 12) p.vy = 12;
+
+  if (p.jumping && p.onGround) {
+    p.vy = JUMP_VEL;
+    p.onGround = false;
+  }
+
+  const result = collidePlayer(p);
+  if (result === 'spike') {
+    lives--;
+    spawnParticles(p.x + p.w/2, p.y + p.h/2, '#ef4444', 20);
+    gameState = 'dead'; deathTimer = 40;
+    return;
+  }
+
+  // Gem collection
+  let collected = 0;
+  gems.forEach(g => {
+    if (g.collected) { collected++; return; }
+    const dx = (p.x + p.w/2) - g.x, dy = (p.y + p.h/2) - g.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 20) {
+      g.collected = true; collected++;
+      spawnParticles(g.x, g.y, '#a78bfa', 12);
+    }
+  });
+
+  // Door check
+  const allCollected = collected >= totalGems;
+  if (allCollected) {
+    const dx = (p.x + p.w/2) - (room.door.x + TILE/2);
+    const dy = (p.y + p.h/2) - (room.door.y + TILE/2);
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 24) {
+      roomNum++;
+      if (roomNum > 20) { gameState = 'win'; return; }
+      loadRoom(roomNum);
+    }
+  }
+
+  // Animation
+  p.frameTimer++;
+  if (p.frameTimer > 8) { p.frameTimer = 0; p.frame = (p.frame + 1) % 4; }
+
+  updateParticles();
+  const collectedCount = gems.filter(g => g.collected).length;
+  ui.textContent = `Room ${roomNum} | Gems: ${collectedCount}/${totalGems} | Lives: ${lives}`;
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function draw() {
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw tiles
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const t = room.grid[r][c];
+      const x = c * TILE, y = r * TILE;
+      if (t === 1) {
+        ctx.fillStyle = COLORS.wall;
+        ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = '#4a4a6a';
+        ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      } else if (t === 2) {
+        ctx.fillStyle = COLORS.platform;
+        ctx.fillRect(x, y, TILE, 8);
+        ctx.fillStyle = '#6b7280';
+        ctx.fillRect(x + 1, y + 1, TILE - 2, 4);
+      } else if (t === 3) {
+        // Spikes
+        ctx.fillStyle = COLORS.spike;
+        ctx.beginPath();
+        ctx.moveTo(x + 4, y + TILE);
+        ctx.lineTo(x + TILE/2, y + 6);
+        ctx.lineTo(x + TILE - 4, y + TILE);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  // Door
+  const allCollected = gems.filter(g => g.collected).length >= totalGems;
+  const dx = room.door.x, dy = room.door.y;
+  ctx.fillStyle = allCollected ? COLORS.door : '#555';
+  ctx.fillRect(dx + 4, dy + 2, TILE - 8, TILE - 2);
+  ctx.fillStyle = allCollected ? COLORS.doorFrame : '#333';
+  ctx.fillRect(dx + 2, dy, TILE - 4, 3);
+  ctx.fillRect(dx + 2, dy, 3, TILE);
+  ctx.fillRect(dx + TILE - 5, dy, 3, TILE);
+  if (allCollected) {
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.arc(dx + TILE - 10, dy + TILE/2, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Gems
+  const t = Date.now() / 300;
+  gems.forEach(g => {
+    if (g.collected) return;
+    const bobY = Math.sin(t + g.x) * 3;
+    ctx.fillStyle = COLORS.gemGlow;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.arc(g.x, g.y + bobY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = COLORS.gem;
+    ctx.beginPath();
+    ctx.moveTo(g.x, g.y + bobY - 8);
+    ctx.lineTo(g.x + 7, g.y + bobY);
+    ctx.lineTo(g.x, g.y + bobY + 8);
+    ctx.lineTo(g.x - 7, g.y + bobY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(g.x - 2, g.y + bobY - 4, 3, 3);
+    ctx.globalAlpha = 1;
+  });
+
+  // Player
+  if (gameState === 'play') {
+    const p = player;
+    const bobX = p.onGround && p.moveDir !== 0 ? Math.sin(p.frame * Math.PI / 2) * 2 : 0;
+    // Body
+    ctx.fillStyle = COLORS.player;
+    ctx.fillRect(p.x + bobX, p.y + 4, p.w, p.h - 4);
+    // Head
+    ctx.fillStyle = '#93c5fd';
+    ctx.fillRect(p.x + 3 + bobX, p.y, p.w - 6, 10);
+    // Eyes
+    ctx.fillStyle = COLORS.playerEye;
+    const ex = p.facing > 0 ? p.x + 14 + bobX : p.x + 6 + bobX;
+    ctx.fillRect(ex, p.y + 3, 3, 3);
+    // Legs animation
+    if (p.onGround && p.moveDir !== 0) {
+      const legOff = Math.sin(p.frame * Math.PI / 2) * 3;
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(p.x + 3 + bobX, p.y + p.h - 1, 6, 3 + legOff);
+      ctx.fillRect(p.x + p.w - 9 + bobX, p.y + p.h - 1, 6, 3 - legOff);
+    }
+  }
+
+  // Particles
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // Overlay states
+  if (gameState === 'gameover') {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 48px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W/2, H/2 - 20);
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '20px system-ui';
+    ctx.fillText(`You reached Room ${roomNum}`, W/2, H/2 + 20);
+    ctx.fillText('Tap to restart', W/2, H/2 + 50);
+  } else if (gameState === 'win') {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#a78bfa';
+    ctx.font = 'bold 44px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOU WIN!', W/2, H/2 - 20);
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '20px system-ui';
+    ctx.fillText('All 20 rooms cleared!', W/2, H/2 + 20);
+    ctx.fillText('Tap to play again', W/2, H/2 + 50);
+  }
+}
+
+// Touch controls
+let touchId = null;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (gameState === 'gameover' || gameState === 'win') { init(); return; }
+  const rect = canvas.getBoundingClientRect();
+  for (const touch of e.changedTouches) {
+    const tx = (touch.clientX - rect.left) / scale;
+    const ty = (touch.clientY - rect.top) / scale;
+    if (ty < H * 0.3) {
+      player.jumping = true;
+    } else if (tx < W / 2) {
+      player.moveDir = -1;
+    } else {
+      player.moveDir = 1;
+    }
+    touchId = touch.identifier;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  for (const touch of e.changedTouches) {
+    const tx = (touch.clientX - rect.left) / scale;
+    const ty = (touch.clientY - rect.top) / scale;
+    if (ty >= H * 0.3) {
+      player.moveDir = tx < W / 2 ? -1 : 1;
+    }
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  player.moveDir = 0;
+  player.jumping = false;
+}, { passive: false });
+
+// Keyboard fallback
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (gameState === 'gameover' || gameState === 'win') init();
+});
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+function handleKeys() {
+  if (gameState !== 'play') return;
+  if (keys['ArrowLeft'] || keys['a']) player.moveDir = -1;
+  else if (keys['ArrowRight'] || keys['d']) player.moveDir = 1;
+  else if (!touchId || !navigator.maxTouchPoints) player.moveDir = 0;
+  if (keys['ArrowUp'] || keys['w'] || keys[' ']) player.jumping = true;
+  else if (!touchId) player.jumping = false;
+}
+
+function loop() {
+  handleKeys();
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+init();
+loop();
+  </script>
+</body>
+</html>
