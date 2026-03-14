@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Day 04 – Ingredient Puzzle</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      min-height: 100vh;
+      overflow-x: hidden;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    nav {
+      padding: 0.75rem 1rem;
+    }
+
+    nav a {
+      color: #a78bfa;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    nav a:hover { text-decoration: underline; }
+
+    /* ── SCREENS ── */
+    .screen { display: none; flex-direction: column; align-items: center; min-height: calc(100vh - 40px); }
+    .screen.active { display: flex; }
+
+    /* ── MAIN MENU ── */
+    #menu-screen {
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+
+    #menu-screen h1 {
+      font-size: 2.5rem;
+      color: #a78bfa;
+      text-align: center;
+    }
+
+    #menu-screen .subtitle {
+      color: #9ca3af;
+      font-size: 1rem;
+      margin-top: -0.5rem;
+      text-align: center;
+    }
+
+    #menu-screen .emoji-hero {
+      font-size: 4rem;
+      text-align: center;
+    }
+
+    .menu-btn {
+      background: #1e1e2e;
+      border: 2px solid #3b3b5c;
+      border-radius: 12px;
+      color: #e0e0ff;
+      font-size: 1.2rem;
+      padding: 1rem 2.5rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 220px;
+      text-align: center;
+    }
+
+    .menu-btn:hover, .menu-btn:active {
+      border-color: #a78bfa;
+      transform: translateY(-2px);
+      background: #2a2a3e;
+    }
+
+    .menu-btn.primary {
+      background: #a78bfa;
+      color: #0f0f1a;
+      border-color: #a78bfa;
+      font-weight: 700;
+    }
+
+    .menu-btn.primary:hover {
+      background: #c4b5fd;
+    }
+
+    /* ── LEVEL SELECT ── */
+    #level-screen {
+      padding: 1.5rem;
+      gap: 1rem;
+    }
+
+    #level-screen h2 {
+      color: #a78bfa;
+      font-size: 1.8rem;
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .level-card {
+      background: #1e1e2e;
+      border: 2px solid #3b3b5c;
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .level-card:hover {
+      border-color: #a78bfa;
+      transform: translateY(-2px);
+    }
+
+    .level-card.locked {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .level-card.locked:hover {
+      border-color: #3b3b5c;
+      transform: none;
+    }
+
+    .level-card .level-num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #a78bfa;
+    }
+
+    .level-card .level-name {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 0.25rem;
+    }
+
+    .level-card .stars {
+      margin-top: 0.4rem;
+      font-size: 1.1rem;
+    }
+
+    /* ── LEVEL INTRO ── */
+    #intro-screen {
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    #intro-screen h2 {
+      color: #a78bfa;
+      font-size: 2rem;
+    }
+
+    #intro-screen .blurb {
+      color: #9ca3af;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    #intro-screen .recipe-preview {
+      font-size: 2rem;
+      line-height: 1.8;
+    }
+
+    /* ── GAME SCREEN ── */
+    #game-screen {
+      padding: 0.5rem;
+      gap: 0.25rem;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* Orders bar */
+    .orders-bar {
+      width: 100%;
+      overflow-x: auto;
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.25rem 0;
+      min-height: 90px;
+      scrollbar-width: none;
+    }
+
+    .orders-bar::-webkit-scrollbar { display: none; }
+
+    .order-card {
+      flex-shrink: 0;
+      background: #1e1e2e;
+      border: 2px solid #3b3b5c;
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      min-width: 80px;
+      text-align: center;
+      position: relative;
+      transition: border-color 0.3s;
+    }
+
+    .order-card.urgent {
+      border-color: #ef4444;
+      animation: pulse-red 0.5s infinite alternate;
+    }
+
+    .order-card.completed {
+      border-color: #22c55e;
+      opacity: 0.6;
+    }
+
+    @keyframes pulse-red {
+      from { border-color: #ef4444; }
+      to { border-color: #991b1b; }
+    }
+
+    .order-card .order-name {
+      font-size: 0.65rem;
+      color: #a78bfa;
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .order-card .order-items {
+      font-size: 1.1rem;
+      line-height: 1.3;
+    }
+
+    .order-card .order-timer {
+      height: 3px;
+      background: #3b3b5c;
+      border-radius: 2px;
+      margin-top: 0.3rem;
+      overflow: hidden;
+    }
+
+    .order-card .order-timer-fill {
+      height: 100%;
+      background: #22c55e;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .order-card .order-timer-fill.warn {
+      background: #f59e0b;
+    }
+
+    .order-card .order-timer-fill.danger {
+      background: #ef4444;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.3rem 0.5rem;
+      background: #1e1e2e;
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .stat-label { color: #9ca3af; }
+    .stat-value { color: #e0e0ff; font-weight: 700; }
+
+    /* Collected ingredients */
+    .collected-bar {
+      width: 100%;
+      min-height: 44px;
+      background: #1a1a2e;
+      border: 2px dashed #3b3b5c;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 0.3rem 0.5rem;
+      gap: 0.2rem;
+      flex-wrap: wrap;
+      font-size: 1.3rem;
+      position: relative;
+    }
+
+    .collected-bar .placeholder-text {
+      color: #3b3b5c;
+      font-size: 0.75rem;
+    }
+
+    .collected-item {
+      animation: pop-in 0.2s ease-out;
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0); }
+      to { transform: scale(1); }
+    }
+
+    .serve-btn {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #22c55e;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+      display: none;
+    }
+
+    .serve-btn.visible { display: block; }
+
+    /* Puzzle grid */
+    .puzzle-container {
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 55vh;
+      position: relative;
+    }
+
+    .puzzle-grid {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .tile {
+      background: #1e1e2e;
+      border: 1px solid #3b3b5c;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
+      position: relative;
+    }
+
+    .tile:active {
+      transform: scale(0.9);
+    }
+
+    .tile.selected {
+      background: #2a2a4e;
+      border-color: #a78bfa;
+      transform: scale(1.05);
+    }
+
+    .tile.matched {
+      animation: match-pop 0.3s ease-out forwards;
+    }
+
+    @keyframes match-pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    .tile.falling {
+      animation: fall-in 0.25s ease-out;
+    }
+
+    @keyframes fall-in {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Game over / Level complete overlay */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 15, 26, 0.92);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+    }
+
+    .overlay.active { display: flex; }
+
+    .overlay h2 {
+      font-size: 2rem;
+      color: #a78bfa;
+    }
+
+    .overlay .result-stars {
+      font-size: 3rem;
+    }
+
+    .overlay .result-stats {
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    /* Combo text */
+    .combo-text {
+      position: fixed;
+      pointer-events: none;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f59e0b;
+      z-index: 50;
+      animation: combo-fly 0.8s ease-out forwards;
+    }
+
+    @keyframes combo-fly {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
+    }
+
+    /* Waste meter */
+    .waste-meter {
+      width: 100%;
+      height: 6px;
+      background: #1e1e2e;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .waste-meter-fill {
+      height: 100%;
+      background: #ef4444;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">&larr; Back to gallery</a></nav>
+
+  <!-- MAIN MENU -->
+  <div id="menu-screen" class="screen active">
+    <div class="emoji-hero">🍔🥬🍅🧀</div>
+    <h1>Order Up!</h1>
+    <p class="subtitle">Ingredient Puzzle Kitchen</p>
+    <button class="menu-btn primary" onclick="showLevels()">Story Mode</button>
+    <button class="menu-btn" onclick="startEndless()">Endless Mode</button>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div id="level-screen" class="screen">
+    <h2>Select Level</h2>
+    <div class="level-grid" id="level-grid"></div>
+    <button class="menu-btn" onclick="showScreen('menu-screen')" style="margin-top:1rem;">Back</button>
+  </div>
+
+  <!-- LEVEL INTRO -->
+  <div id="intro-screen" class="screen">
+    <h2 id="intro-title"></h2>
+    <p class="blurb" id="intro-blurb"></p>
+    <div id="intro-ingredients" class="recipe-preview"></div>
+    <button class="menu-btn primary" onclick="startCurrentLevel()">Start Cooking!</button>
+    <button class="menu-btn" onclick="showLevels()">Back</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="screen">
+    <div class="orders-bar" id="orders-bar"></div>
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-label">Score:</span><span class="stat-value" id="score-val">0</span></div>
+      <div class="stat"><span class="stat-label">Served:</span><span class="stat-value" id="served-val">0</span></div>
+      <div class="stat"><span class="stat-label">Waste:</span><span class="stat-value" id="waste-val">0%</span></div>
+      <div class="stat" id="level-timer-stat"><span class="stat-label">Time:</span><span class="stat-value" id="timer-val">--</span></div>
+    </div>
+    <div class="waste-meter"><div class="waste-meter-fill" id="waste-fill" style="width:0%"></div></div>
+    <div class="collected-bar" id="collected-bar">
+      <span class="placeholder-text">Match ingredients below to collect them</span>
+      <button class="serve-btn" id="serve-btn" onclick="tryServe()">SERVE</button>
+    </div>
+    <div class="puzzle-container">
+      <div class="puzzle-grid" id="puzzle-grid"></div>
+    </div>
+  </div>
+
+  <!-- OVERLAY (level complete / game over) -->
+  <div class="overlay" id="overlay">
+    <h2 id="overlay-title">Level Complete!</h2>
+    <div class="result-stars" id="overlay-stars"></div>
+    <div class="result-stats" id="overlay-stats"></div>
+    <button class="menu-btn primary" id="overlay-btn1" onclick="overlayAction1()">Next Level</button>
+    <button class="menu-btn" id="overlay-btn2" onclick="overlayAction2()">Level Select</button>
+  </div>
+
+  <script>
+    // ── GAME DATA ──
+    const INGREDIENTS = {
+      bread: '🍞', meat: '🥩', cheese: '🧀', lettuce: '🥬',
+      tomato: '🍅', pickle: '🥒', bacon: '🥓', onion: '🧅',
+      egg: '🍳', pepper: '🌶️'
+    };
+
+    const RECIPES = {
+      'Simple Burger': { items: { bread: 2, meat: 1 }, emoji: '🍔' },
+      'Cheeseburger': { items: { bread: 2, meat: 1, cheese: 1 }, emoji: '🍔' },
+      'Classic Burger': { items: { bread: 2, meat: 1, lettuce: 1, tomato: 1 }, emoji: '🍔' },
+      'Deluxe Burger': { items: { bread: 2, meat: 1, cheese: 1, lettuce: 1, tomato: 1 }, emoji: '🍔' },
+      'BLT': { items: { bread: 2, bacon: 2, lettuce: 1, tomato: 1 }, emoji: '🥪' },
+      'Bacon Cheese': { items: { bread: 2, meat: 1, cheese: 1, bacon: 1 }, emoji: '🍔' },
+      'Veggie Burger': { items: { bread: 2, lettuce: 2, tomato: 1, pickle: 1, onion: 1 }, emoji: '🥗' },
+      'Double Burger': { items: { bread: 2, meat: 2, cheese: 2, lettuce: 1, tomato: 1 }, emoji: '🍔' },
+      'Supreme': { items: { bread: 2, meat: 2, cheese: 1, bacon: 1, lettuce: 1, tomato: 1, onion: 1 }, emoji: '🍔' },
+      'Egg Burger': { items: { bread: 2, meat: 1, egg: 1, cheese: 1 }, emoji: '🍳' },
+      'Spicy Burger': { items: { bread: 2, meat: 1, pepper: 1, cheese: 1, onion: 1 }, emoji: '🌶️' },
+      'Breakfast Stack': { items: { bread: 2, egg: 1, bacon: 2, cheese: 1 }, emoji: '🍳' }
+    };
+
+    const LEVELS = [
+      {
+        name: 'First Day',
+        blurb: "Welcome to the kitchen! It's your first day as a line cook. Start simple - just bread and meat. You got this!",
+        ingredients: ['bread', 'meat'],
+        recipes: ['Simple Burger'],
+        gridSize: 6, orderTime: 30, totalOrders: 5, levelTime: 120
+      },
+      {
+        name: 'Cheese Please',
+        blurb: "The customers are asking for cheese on their burgers. Time to step it up a notch!",
+        ingredients: ['bread', 'meat', 'cheese'],
+        recipes: ['Simple Burger', 'Cheeseburger'],
+        gridSize: 6, orderTime: 28, totalOrders: 6, levelTime: 130
+      },
+      {
+        name: 'Going Green',
+        blurb: "Fresh produce delivery just arrived! Lettuce and tomatoes are on the menu now.",
+        ingredients: ['bread', 'meat', 'lettuce', 'tomato'],
+        recipes: ['Simple Burger', 'Classic Burger'],
+        gridSize: 6, orderTime: 28, totalOrders: 7, levelTime: 140
+      },
+      {
+        name: 'Deluxe Kitchen',
+        blurb: "Your reputation is growing! Customers want the works - cheese, lettuce, tomato. Full deluxe!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato'],
+        recipes: ['Cheeseburger', 'Classic Burger', 'Deluxe Burger'],
+        gridSize: 7, orderTime: 26, totalOrders: 8, levelTime: 150
+      },
+      {
+        name: 'Bacon Rush',
+        blurb: "Bacon has arrived! The BLT crowd is lining up. Things are getting busy in here!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'bacon'],
+        recipes: ['BLT', 'Bacon Cheese', 'Deluxe Burger'],
+        gridSize: 7, orderTime: 25, totalOrders: 9, levelTime: 160
+      },
+      {
+        name: 'Pickle Panic',
+        blurb: "The pickle shipment is in and customers want them on everything. Don't let the orders pile up!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'pickle'],
+        recipes: ['Classic Burger', 'Deluxe Burger', 'Veggie Burger'],
+        gridSize: 7, orderTime: 24, totalOrders: 10, levelTime: 160
+      },
+      {
+        name: 'Onion Ring',
+        blurb: "The onion slicer is ready. More ingredients means more possibilities... and more chaos!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'bacon', 'onion'],
+        recipes: ['Deluxe Burger', 'Bacon Cheese', 'BLT', 'Veggie Burger'],
+        gridSize: 7, orderTime: 22, totalOrders: 11, levelTime: 170
+      },
+      {
+        name: 'Brunch Special',
+        blurb: "Weekend brunch service! Eggs and everything else. The kitchen is HOT today!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'bacon', 'egg'],
+        recipes: ['Egg Burger', 'Breakfast Stack', 'Bacon Cheese', 'BLT'],
+        gridSize: 8, orderTime: 20, totalOrders: 12, levelTime: 180
+      },
+      {
+        name: 'Master Chef',
+        blurb: "You've made it to the top. Full kitchen, full menu, full speed. Every ingredient, every recipe. Show them what you've got!",
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'bacon', 'onion', 'egg', 'pepper', 'pickle'],
+        recipes: ['Deluxe Burger', 'Double Burger', 'Supreme', 'Spicy Burger', 'Breakfast Stack', 'BLT'],
+        gridSize: 8, orderTime: 18, totalOrders: 15, levelTime: 200
+      }
+    ];
+
+    // ── GAME STATE ──
+    let game = {};
+    let levelStars = JSON.parse(localStorage.getItem('orderup-stars') || '{}');
+    let selectedTile = null;
+    let isProcessing = false;
+    let gameLoop = null;
+    let currentMode = 'story'; // 'story' or 'endless'
+    let currentLevel = 0;
+
+    // ── SCREEN MANAGEMENT ──
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.getElementById('overlay').classList.remove('active');
+    }
+
+    function showLevels() {
+      renderLevelGrid();
+      showScreen('level-screen');
+    }
+
+    function renderLevelGrid() {
+      const grid = document.getElementById('level-grid');
+      grid.innerHTML = '';
+      LEVELS.forEach((level, i) => {
+        const unlocked = i === 0 || levelStars[i - 1];
+        const stars = levelStars[i] || 0;
+        const card = document.createElement('div');
+        card.className = 'level-card' + (unlocked ? '' : ' locked');
+        card.innerHTML = `
+          <div class="level-num">${i + 1}</div>
+          <div class="level-name">${level.name}</div>
+          <div class="stars">${unlocked ? starDisplay(stars) : '🔒'}</div>
+        `;
+        if (unlocked) card.onclick = () => showIntro(i);
+        grid.appendChild(card);
+      });
+    }
+
+    function starDisplay(n) {
+      return '⭐'.repeat(n) + '☆'.repeat(3 - n);
+    }
+
+    function showIntro(levelIdx) {
+      currentLevel = levelIdx;
+      const level = LEVELS[levelIdx];
+      document.getElementById('intro-title').textContent = `Level ${levelIdx + 1}: ${level.name}`;
+      document.getElementById('intro-blurb').textContent = level.blurb;
+      const ingDisplay = level.ingredients.map(k => INGREDIENTS[k]).join(' ');
+      document.getElementById('intro-ingredients').textContent = ingDisplay;
+      showScreen('intro-screen');
+    }
+
+    function startCurrentLevel() {
+      currentMode = 'story';
+      initGame(LEVELS[currentLevel]);
+    }
+
+    function startEndless() {
+      currentMode = 'endless';
+      const endlessConfig = {
+        name: 'Endless',
+        ingredients: ['bread', 'meat', 'cheese', 'lettuce', 'tomato', 'bacon', 'pickle', 'onion'],
+        recipes: Object.keys(RECIPES),
+        gridSize: 7, orderTime: 25, totalOrders: Infinity, levelTime: Infinity
+      };
+      initGame(endlessConfig);
+    }
+
+    // ── GAME INIT ──
+    function initGame(config) {
+      if (gameLoop) clearInterval(gameLoop);
+
+      game = {
+        config,
+        grid: [],
+        gridSize: config.gridSize,
+        orders: [],
+        collected: [],
+        score: 0,
+        served: 0,
+        totalCollected: 0,
+        totalUsed: 0,
+        combo: 0,
+        ordersSpawned: 0,
+        orderSpawnTimer: 0,
+        levelTimer: config.levelTime,
+        gameOver: false,
+        coldTimers: {} // track prepared orders waiting
+      };
+
+      // Build grid
+      buildGrid();
+      spawnOrder();
+      spawnOrder();
+      updateUI();
+      showScreen('game-screen');
+
+      // Show/hide timer for endless
+      document.getElementById('level-timer-stat').style.display =
+        config.levelTime === Infinity ? 'none' : 'flex';
+
+      // Game loop
+      gameLoop = setInterval(gameTick, 1000);
+    }
+
+    function buildGrid() {
+      const { gridSize, ingredients } = game.config;
+      game.grid = [];
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        game.grid[i] = randomIngredient();
+      }
+      // Remove initial matches
+      let safety = 0;
+      while (findMatches().length > 0 && safety < 100) {
+        const matches = findMatches();
+        matches.forEach(idx => { game.grid[idx] = randomIngredient(); });
+        safety++;
+      }
+      renderGrid();
+    }
+
+    function randomIngredient() {
+      const keys = game.config.ingredients;
+      return keys[Math.floor(Math.random() * keys.length)];
+    }
+
+    // ── GRID RENDERING ──
+    function renderGrid() {
+      const grid = document.getElementById('puzzle-grid');
+      const size = game.gridSize;
+      grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      grid.innerHTML = '';
+
+      for (let i = 0; i < size * size; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.textContent = INGREDIENTS[game.grid[i]] || '';
+        tile.dataset.index = i;
+
+        // Touch events
+        tile.addEventListener('touchstart', onTileTouch, { passive: false });
+        tile.addEventListener('touchmove', onTileSwipe, { passive: false });
+        tile.addEventListener('touchend', onTileEnd, { passive: false });
+        // Mouse events
+        tile.addEventListener('mousedown', onTileMouseDown);
+        tile.addEventListener('click', onTileClick);
+
+        grid.appendChild(tile);
+      }
+    }
+
+    // ── TOUCH/SWIPE HANDLING ──
+    let touchStartX = 0, touchStartY = 0, touchTile = -1;
+
+    function onTileTouch(e) {
+      if (isProcessing || game.gameOver) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchTile = parseInt(e.currentTarget.dataset.index);
+    }
+
+    function onTileSwipe(e) {
+      e.preventDefault();
+    }
+
+    function onTileEnd(e) {
+      if (isProcessing || game.gameOver || touchTile < 0) return;
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (absDx < 15 && absDy < 15) {
+        // Tap - select/deselect
+        handleTileSelect(touchTile);
+        touchTile = -1;
+        return;
+      }
+
+      let neighbor = -1;
+      const size = game.gridSize;
+      const row = Math.floor(touchTile / size);
+      const col = touchTile % size;
+
+      if (absDx > absDy) {
+        neighbor = dx > 0 ? (col < size - 1 ? touchTile + 1 : -1) : (col > 0 ? touchTile - 1 : -1);
+      } else {
+        neighbor = dy > 0 ? (row < size - 1 ? touchTile + size : -1) : (row > 0 ? touchTile - size : -1);
+      }
+
+      if (neighbor >= 0) {
+        trySwap(touchTile, neighbor);
+      }
+      touchTile = -1;
+    }
+
+    let mouseDownTile = -1, mouseStartX = 0, mouseStartY = 0;
+
+    function onTileMouseDown(e) {
+      if (isProcessing || game.gameOver) return;
+      mouseDownTile = parseInt(e.currentTarget.dataset.index);
+      mouseStartX = e.clientX;
+      mouseStartY = e.clientY;
+
+      const onMouseUp = (e2) => {
+        document.removeEventListener('mouseup', onMouseUp);
+        const dx = e2.clientX - mouseStartX;
+        const dy = e2.clientY - mouseStartY;
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // handled by click
+
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const size = game.gridSize;
+        const row = Math.floor(mouseDownTile / size);
+        const col = mouseDownTile % size;
+        let neighbor = -1;
+
+        if (absDx > absDy) {
+          neighbor = dx > 0 ? (col < size - 1 ? mouseDownTile + 1 : -1) : (col > 0 ? mouseDownTile - 1 : -1);
+        } else {
+          neighbor = dy > 0 ? (row < size - 1 ? mouseDownTile + size : -1) : (row > 0 ? mouseDownTile - size : -1);
+        }
+
+        if (neighbor >= 0) trySwap(mouseDownTile, neighbor);
+        mouseDownTile = -1;
+      };
+      document.addEventListener('mouseup', onMouseUp);
+    }
+
+    function onTileClick(e) {
+      if (isProcessing || game.gameOver) return;
+      handleTileSelect(parseInt(e.currentTarget.dataset.index));
+    }
+
+    function handleTileSelect(idx) {
+      const tiles = document.querySelectorAll('.tile');
+      if (selectedTile === null) {
+        selectedTile = idx;
+        tiles[idx].classList.add('selected');
+      } else if (selectedTile === idx) {
+        tiles[idx].classList.remove('selected');
+        selectedTile = null;
+      } else {
+        // Check adjacency
+        const size = game.gridSize;
+        const r1 = Math.floor(selectedTile / size), c1 = selectedTile % size;
+        const r2 = Math.floor(idx / size), c2 = idx % size;
+        if ((Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1) {
+          tiles[selectedTile].classList.remove('selected');
+          trySwap(selectedTile, idx);
+        } else {
+          tiles[selectedTile].classList.remove('selected');
+          selectedTile = idx;
+          tiles[idx].classList.add('selected');
+        }
+      }
+    }
+
+    // ── SWAP & MATCH LOGIC ──
+    async function trySwap(a, b) {
+      if (isProcessing) return;
+      isProcessing = true;
+      selectedTile = null;
+
+      // Swap
+      [game.grid[a], game.grid[b]] = [game.grid[b], game.grid[a]];
+
+      const matches = findMatches();
+      if (matches.length > 0) {
+        game.combo = 0;
+        await processMatches();
+      } else {
+        // Swap back
+        [game.grid[a], game.grid[b]] = [game.grid[b], game.grid[a]];
+      }
+
+      renderGrid();
+      isProcessing = false;
+    }
+
+    function findMatches() {
+      const size = game.gridSize;
+      const matched = new Set();
+
+      // Horizontal
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size - 2; c++) {
+          const idx = r * size + c;
+          const type = game.grid[idx];
+          if (type && game.grid[idx + 1] === type && game.grid[idx + 2] === type) {
+            matched.add(idx);
+            matched.add(idx + 1);
+            matched.add(idx + 2);
+          }
+        }
+      }
+
+      // Vertical
+      for (let c = 0; c < size; c++) {
+        for (let r = 0; r < size - 2; r++) {
+          const idx = r * size + c;
+          const type = game.grid[idx];
+          if (type && game.grid[idx + size] === type && game.grid[idx + size * 2] === type) {
+            matched.add(idx);
+            matched.add(idx + size);
+            matched.add(idx + size * 2);
+          }
+        }
+      }
+
+      return [...matched];
+    }
+
+    async function processMatches() {
+      let matches = findMatches();
+      while (matches.length > 0) {
+        game.combo++;
+
+        // Collect matched ingredients
+        const collected = {};
+        matches.forEach(idx => {
+          const ing = game.grid[idx];
+          collected[ing] = (collected[ing] || 0) + 1;
+          game.totalCollected++;
+        });
+
+        // Add to collected bar
+        for (const [ing, count] of Object.entries(collected)) {
+          for (let i = 0; i < count; i++) {
+            game.collected.push(ing);
+          }
+        }
+
+        // Score
+        const comboBonus = game.combo > 1 ? game.combo : 1;
+        const pts = matches.length * 10 * comboBonus;
+        game.score += pts;
+
+        if (game.combo > 1) showCombo(game.combo, pts);
+
+        // Remove matched tiles
+        matches.forEach(idx => { game.grid[idx] = null; });
+        renderGrid();
+
+        // Animate
+        await delay(200);
+
+        // Drop tiles down
+        dropTiles();
+        renderGrid();
+        await delay(200);
+
+        // Check for auto-serve
+        checkAutoServe();
+        updateUI();
+
+        matches = findMatches();
+      }
+    }
+
+    function dropTiles() {
+      const size = game.gridSize;
+      for (let c = 0; c < size; c++) {
+        let emptySlots = [];
+        for (let r = size - 1; r >= 0; r--) {
+          const idx = r * size + c;
+          if (game.grid[idx] === null) {
+            emptySlots.push(idx);
+          } else if (emptySlots.length > 0) {
+            const target = emptySlots.shift();
+            game.grid[target] = game.grid[idx];
+            game.grid[idx] = null;
+            emptySlots.push(idx);
+          }
+        }
+        // Fill empties at top
+        emptySlots.forEach(idx => {
+          game.grid[idx] = randomIngredient();
+        });
+      }
+    }
+
+    function showCombo(combo, pts) {
+      const el = document.createElement('div');
+      el.className = 'combo-text';
+      el.textContent = `${combo}x Combo! +${pts}`;
+      el.style.left = '50%';
+      el.style.top = '50%';
+      el.style.transform = 'translateX(-50%)';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+
+    // ── ORDER SYSTEM ──
+    function spawnOrder() {
+      if (game.config.totalOrders !== Infinity && game.ordersSpawned >= game.config.totalOrders) return;
+      if (game.orders.length >= 5) return;
+
+      const recipeNames = game.config.recipes;
+      const name = recipeNames[Math.floor(Math.random() * recipeNames.length)];
+      const recipe = RECIPES[name];
+
+      game.orders.push({
+        name,
+        emoji: recipe.emoji,
+        items: { ...recipe.items },
+        remaining: { ...recipe.items },
+        timeLeft: game.config.orderTime,
+        maxTime: game.config.orderTime,
+        expired: false
+      });
+      game.ordersSpawned++;
+    }
+
+    function checkAutoServe() {
+      // Check if collected ingredients can fulfill any order
+      for (let oi = 0; oi < game.orders.length; oi++) {
+        const order = game.orders[oi];
+        if (order.expired) continue;
+
+        const needed = {};
+        for (const [ing, qty] of Object.entries(order.items)) {
+          needed[ing] = qty;
+        }
+
+        // Count available in collected
+        const available = {};
+        game.collected.forEach(c => { available[c] = (available[c] || 0) + 1; });
+
+        let canFulfill = true;
+        for (const [ing, qty] of Object.entries(needed)) {
+          if ((available[ing] || 0) < qty) {
+            canFulfill = false;
+            break;
+          }
+        }
+
+        if (canFulfill) {
+          // Remove used ingredients
+          for (const [ing, qty] of Object.entries(needed)) {
+            let removed = 0;
+            game.collected = game.collected.filter(c => {
+              if (c === ing && removed < qty) { removed++; game.totalUsed++; return false; }
+              return true;
+            });
+          }
+
+          // Score based on time remaining
+          const timeBonus = Math.floor((order.timeLeft / order.maxTime) * 50);
+          game.score += 100 + timeBonus;
+          game.served++;
+
+          // Flash order
+          order.completed = true;
+          updateOrdersBar();
+
+          setTimeout(() => {
+            game.orders.splice(game.orders.indexOf(order), 1);
+            updateOrdersBar();
+          }, 500);
+        }
+      }
+
+      updateServeButton();
+    }
+
+    function updateServeButton() {
+      const btn = document.getElementById('serve-btn');
+      // Check if any order can be fulfilled
+      for (const order of game.orders) {
+        if (order.expired) continue;
+        const available = {};
+        game.collected.forEach(c => { available[c] = (available[c] || 0) + 1; });
+        let canFulfill = true;
+        for (const [ing, qty] of Object.entries(order.items)) {
+          if ((available[ing] || 0) < qty) { canFulfill = false; break; }
+        }
+        if (canFulfill) {
+          btn.classList.add('visible');
+          return;
+        }
+      }
+      btn.classList.remove('visible');
+    }
+
+    function tryServe() {
+      checkAutoServe();
+    }
+
+    // ── GAME TICK ──
+    function gameTick() {
+      if (game.gameOver) return;
+
+      // Update order timers
+      for (let i = game.orders.length - 1; i >= 0; i--) {
+        const order = game.orders[i];
+        if (order.completed) continue;
+        order.timeLeft--;
+        if (order.timeLeft <= 0) {
+          order.expired = true;
+          game.orders.splice(i, 1);
+          game.score = Math.max(0, game.score - 50);
+        }
+      }
+
+      // Spawn new orders
+      game.orderSpawnTimer++;
+      const spawnInterval = currentMode === 'endless' ? 6 : Math.max(4, 8 - currentLevel);
+      if (game.orderSpawnTimer >= spawnInterval) {
+        game.orderSpawnTimer = 0;
+        spawnOrder();
+      }
+
+      // Level timer
+      if (game.config.levelTime !== Infinity) {
+        game.levelTimer--;
+        if (game.levelTimer <= 0) {
+          endGame();
+          return;
+        }
+      }
+
+      // Waste calculation: collected but unused ingredients
+      // Ingredients sitting in collected bar for too long waste
+      if (game.collected.length > 15) {
+        // Auto-waste oldest ingredients
+        const wasted = game.collected.splice(0, game.collected.length - 12);
+        game.totalCollected += 0; // already counted
+      }
+
+      updateUI();
+    }
+
+    function endGame() {
+      game.gameOver = true;
+      if (gameLoop) clearInterval(gameLoop);
+
+      const wastePercent = game.totalCollected > 0
+        ? Math.round(((game.totalCollected - game.totalUsed) / game.totalCollected) * 100)
+        : 0;
+
+      if (currentMode === 'story') {
+        // Calculate stars
+        const level = LEVELS[currentLevel];
+        let stars = 0;
+        if (game.served >= Math.floor(level.totalOrders * 0.4)) stars = 1;
+        if (game.served >= Math.floor(level.totalOrders * 0.65)) stars = 2;
+        if (game.served >= Math.floor(level.totalOrders * 0.85) && wastePercent < 50) stars = 3;
+
+        // Save stars
+        if (!levelStars[currentLevel] || stars > levelStars[currentLevel]) {
+          levelStars[currentLevel] = stars;
+          localStorage.setItem('orderup-stars', JSON.stringify(levelStars));
+        }
+
+        document.getElementById('overlay-title').textContent = stars > 0 ? 'Level Complete!' : 'Time\'s Up!';
+        document.getElementById('overlay-stars').textContent = starDisplay(stars);
+        document.getElementById('overlay-stats').innerHTML =
+          `Orders Served: ${game.served} / ${level.totalOrders}<br>` +
+          `Score: ${game.score}<br>` +
+          `Waste: ${wastePercent}%`;
+
+        const hasNext = currentLevel < LEVELS.length - 1;
+        document.getElementById('overlay-btn1').textContent = hasNext && stars > 0 ? 'Next Level' : 'Retry';
+        document.getElementById('overlay-btn2').textContent = 'Level Select';
+      } else {
+        document.getElementById('overlay-title').textContent = 'Game Over!';
+        document.getElementById('overlay-stars').textContent = '';
+        document.getElementById('overlay-stats').innerHTML =
+          `Orders Served: ${game.served}<br>` +
+          `Score: ${game.score}<br>` +
+          `Waste: ${wastePercent}%`;
+        document.getElementById('overlay-btn1').textContent = 'Play Again';
+        document.getElementById('overlay-btn2').textContent = 'Main Menu';
+      }
+
+      document.getElementById('overlay').classList.add('active');
+    }
+
+    function overlayAction1() {
+      if (currentMode === 'story') {
+        const stars = levelStars[currentLevel] || 0;
+        if (stars > 0 && currentLevel < LEVELS.length - 1) {
+          currentLevel++;
+          showIntro(currentLevel);
+        } else {
+          startCurrentLevel();
+        }
+      } else {
+        startEndless();
+      }
+    }
+
+    function overlayAction2() {
+      if (currentMode === 'story') {
+        showLevels();
+      } else {
+        showScreen('menu-screen');
+      }
+    }
+
+    // ── UI UPDATES ──
+    function updateUI() {
+      // Score
+      document.getElementById('score-val').textContent = game.score;
+      document.getElementById('served-val').textContent = game.served;
+
+      // Waste
+      const wastePercent = game.totalCollected > 0
+        ? Math.round(((game.totalCollected - game.totalUsed) / game.totalCollected) * 100)
+        : 0;
+      document.getElementById('waste-val').textContent = wastePercent + '%';
+      document.getElementById('waste-fill').style.width = wastePercent + '%';
+
+      // Timer
+      if (game.config.levelTime !== Infinity) {
+        const mins = Math.floor(game.levelTimer / 60);
+        const secs = game.levelTimer % 60;
+        document.getElementById('timer-val').textContent =
+          `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      // Collected bar
+      updateCollectedBar();
+
+      // Orders
+      updateOrdersBar();
+    }
+
+    function updateCollectedBar() {
+      const bar = document.getElementById('collected-bar');
+      const btn = document.getElementById('serve-btn');
+      let html = '';
+      if (game.collected.length === 0) {
+        html = '<span class="placeholder-text">Match ingredients below to collect them</span>';
+      } else {
+        html = game.collected.map(c =>
+          `<span class="collected-item">${INGREDIENTS[c]}</span>`
+        ).join('');
+      }
+      bar.innerHTML = html;
+      bar.appendChild(btn);
+      updateServeButton();
+    }
+
+    function updateOrdersBar() {
+      const bar = document.getElementById('orders-bar');
+      bar.innerHTML = '';
+      game.orders.forEach(order => {
+        const card = document.createElement('div');
+        const pct = order.timeLeft / order.maxTime;
+        const urgentClass = pct < 0.25 ? ' urgent' : '';
+        const completedClass = order.completed ? ' completed' : '';
+        card.className = 'order-card' + urgentClass + completedClass;
+
+        const itemsDisplay = Object.entries(order.items)
+          .map(([ing, qty]) => (INGREDIENTS[ing] || '?').repeat(qty))
+          .join('');
+
+        const timerClass = pct < 0.25 ? 'danger' : pct < 0.5 ? 'warn' : '';
+
+        card.innerHTML = `
+          <div class="order-name">${order.emoji} ${order.name}</div>
+          <div class="order-items">${itemsDisplay}</div>
+          <div class="order-timer"><div class="order-timer-fill ${timerClass}" style="width:${pct * 100}%"></div></div>
+        `;
+        bar.appendChild(card);
+      });
+    }
+
+    // ── UTILITY ──
+    function delay(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    // Prevent pull-to-refresh on mobile
+    document.addEventListener('touchmove', e => {
+      if (e.target.closest('.puzzle-grid')) e.preventDefault();
+    }, { passive: false });
+  </script>
+</body>
+</html>
