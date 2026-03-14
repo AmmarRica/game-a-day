@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clash of Armies - Puzzle Battle</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a0a2e;
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#game-container {
+  position: relative;
+  width: 560px;
+}
+
+#top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px 8px 0 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-bottom: none;
+}
+
+#top-bar .info { font-size: 14px; }
+#top-bar .level-name { font-size: 16px; font-weight: bold; color: #ffd700; }
+
+.health-bar-container {
+  width: 100%;
+  padding: 4px 16px;
+  background: rgba(0,0,0,0.3);
+}
+
+.health-bar {
+  height: 18px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #333;
+  position: relative;
+}
+
+.health-bar .fill {
+  height: 100%;
+  border-radius: 9px;
+  transition: width 0.5s ease;
+}
+
+.health-bar .label {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+#enemy-health .fill { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+#player-health .fill { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+
+canvas {
+  display: block;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  border-right: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+#bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 0 0 8px 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-top: none;
+}
+
+#bottom-bar button {
+  background: linear-gradient(180deg, #8e44ad, #6c3483);
+  border: 1px solid #a569bd;
+  color: white;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+#bottom-bar button:hover { background: linear-gradient(180deg, #a569bd, #8e44ad); }
+#bottom-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#turns-display { font-size: 14px; color: #ddd; }
+
+/* Overlay screens */
+.overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.overlay h1 { font-size: 36px; margin-bottom: 12px; }
+.overlay h2 { font-size: 24px; margin-bottom: 8px; }
+.overlay p { font-size: 14px; margin-bottom: 6px; color: #ccc; text-align: center; max-width: 400px; }
+.overlay .subtitle { font-size: 16px; color: #aaa; margin-bottom: 20px; }
+
+.overlay button {
+  background: linear-gradient(180deg, #e67e22, #d35400);
+  border: 2px solid #f39c12;
+  color: white;
+  padding: 12px 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 16px;
+  transition: all 0.2s;
+}
+
+.overlay button:hover { transform: scale(1.05); }
+
+.level-select {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.level-btn {
+  width: 50px; height: 50px;
+  background: linear-gradient(180deg, #2c3e50, #1a252f);
+  border: 2px solid #555;
+  color: #999;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: not-allowed;
+  transition: all 0.2s;
+}
+
+.level-btn.unlocked {
+  background: linear-gradient(180deg, #8e44ad, #6c3483);
+  border-color: #a569bd;
+  color: white;
+  cursor: pointer;
+}
+
+.level-btn.unlocked:hover { transform: scale(1.1); }
+
+.level-btn.completed {
+  background: linear-gradient(180deg, #27ae60, #1e8449);
+  border-color: #2ecc71;
+  color: white;
+  cursor: pointer;
+}
+
+.level-btn.completed:hover { transform: scale(1.1); }
+
+.enemy-preview {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.enemy-card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.enemy-card .emoji { font-size: 28px; }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="top-bar">
+    <span class="info" id="level-display">Level 1</span>
+    <span class="level-name" id="level-name">The Goblin Horde</span>
+    <span class="info" id="score-display">Score: 0</span>
+  </div>
+  <div class="health-bar-container" id="enemy-hb-container">
+    <div class="health-bar" id="enemy-health">
+      <div class="fill" style="width:100%"></div>
+      <div class="label">Enemy: 100/100</div>
+    </div>
+  </div>
+  <canvas id="canvas" width="560" height="480"></canvas>
+  <div class="health-bar-container" id="player-hb-container">
+    <div class="health-bar" id="player-health">
+      <div class="fill" style="width:100%"></div>
+      <div class="label">You: 100/100</div>
+    </div>
+  </div>
+  <div id="bottom-bar">
+    <span id="turns-display">Turn: 1</span>
+    <div>
+      <button id="btn-delete" title="Delete selected unit">Delete</button>
+      <button id="btn-end-turn">End Turn</button>
+    </div>
+  </div>
+
+  <!-- Title screen overlay -->
+  <div class="overlay" id="title-screen">
+    <h1 style="color:#ffd700">Clash of Armies</h1>
+    <p class="subtitle">A Puzzle Battle Game</p>
+    <p>Match 3 same-color units in a <b>column</b> to form an attack!</p>
+    <p>Match 3 same-color units in a <b>row</b> to form a wall!</p>
+    <p>Destroy the enemy army before they destroy you!</p>
+    <button onclick="showLevelSelect()">Play</button>
+  </div>
+
+  <!-- Level select overlay -->
+  <div class="overlay" id="level-select-screen" style="display:none">
+    <h2 style="color:#ffd700">Select Level</h2>
+    <div class="level-select" id="level-buttons"></div>
+    <div id="level-preview"></div>
+    <button id="start-level-btn" onclick="startSelectedLevel()" style="display:none">Start Battle</button>
+    <button onclick="showTitle()" style="background:linear-gradient(180deg,#555,#333);border-color:#777;font-size:14px;padding:8px 20px;margin-top:8px">Back</button>
+  </div>
+
+  <!-- Victory overlay -->
+  <div class="overlay" id="victory-screen" style="display:none">
+    <h1 style="color:#2ecc71">Victory!</h1>
+    <p id="victory-text">You defeated the enemy!</p>
+    <button onclick="showLevelSelect()">Continue</button>
+  </div>
+
+  <!-- Defeat overlay -->
+  <div class="overlay" id="defeat-screen" style="display:none">
+    <h1 style="color:#e74c3c">Defeated!</h1>
+    <p id="defeat-text">Your army has fallen...</p>
+    <button onclick="retryLevel()">Retry</button>
+    <button onclick="showLevelSelect()" style="background:linear-gradient(180deg,#555,#333);border-color:#777;font-size:14px;padding:8px 20px">Level Select</button>
+  </div>
+</div>
+
+<script>
+// ==================== GAME CONFIG ====================
+const COLS = 8;
+const ROWS = 8; // player rows (bottom half)
+const CELL = 56;
+const CANVAS_W = 560;
+const CANVAS_H = 480;
+const ENEMY_ZONE_H = 120; // top area for enemy attacks
+const GRID_OFFSET_Y = ENEMY_ZONE_H;
+const GRID_OFFSET_X = (CANVAS_W - COLS * CELL) / 2;
+
+const UNIT_TYPES = [
+  { id: 0, name: 'Swordsman', color: '#e74c3c', icon: '⚔️', chargeTime: 2, power: 5 },
+  { id: 1, name: 'Archer', color: '#3498db', icon: '🏹', chargeTime: 2, power: 4 },
+  { id: 2, name: 'Knight', color: '#2ecc71', icon: '🛡️', chargeTime: 3, power: 8 },
+  { id: 3, name: 'Mage', color: '#9b59b6', icon: '🔮', chargeTime: 3, power: 7 },
+  { id: 4, name: 'Pikeman', color: '#f39c12', icon: '🔱', chargeTime: 2, power: 5 },
+];
+
+// ==================== LEVEL DEFINITIONS ====================
+const LEVELS = [
+  {
+    id: 1, name: 'The Goblin Horde',
+    enemyHP: 80, playerHP: 100,
+    unitPool: [0, 1], // which unit types available
+    enemyAttackDmg: 4, enemyAttackInterval: 3,
+    enemies: [
+      { name: 'Goblin', emoji: '👺', hp: 15 },
+      { name: 'Goblin Archer', emoji: '🏹', hp: 10 },
+    ],
+    desc: 'A ragtag goblin warband approaches!'
+  },
+  {
+    id: 2, name: 'Skeleton Ambush',
+    enemyHP: 100, playerHP: 100,
+    unitPool: [0, 1, 2],
+    enemyAttackDmg: 5, enemyAttackInterval: 3,
+    enemies: [
+      { name: 'Skeleton', emoji: '💀', hp: 20 },
+      { name: 'Bone Archer', emoji: '🦴', hp: 15 },
+    ],
+    desc: 'Undead rise from the ground!'
+  },
+  {
+    id: 3, name: 'Dark Forest Wolves',
+    enemyHP: 120, playerHP: 100,
+    unitPool: [0, 1, 2],
+    enemyAttackDmg: 6, enemyAttackInterval: 3,
+    enemies: [
+      { name: 'Dire Wolf', emoji: '🐺', hp: 25 },
+      { name: 'Shadow Wolf', emoji: '🌑', hp: 20 },
+    ],
+    desc: 'Beasts lurk in the dark forest...'
+  },
+  {
+    id: 4, name: 'Orc Warband',
+    enemyHP: 150, playerHP: 110,
+    unitPool: [0, 1, 2, 3],
+    enemyAttackDmg: 7, enemyAttackInterval: 3,
+    enemies: [
+      { name: 'Orc Warrior', emoji: '👹', hp: 30 },
+      { name: 'Orc Shaman', emoji: '🧙', hp: 20 },
+      { name: 'Orc Brute', emoji: '💪', hp: 35 },
+    ],
+    desc: 'The orc warband charges!'
+  },
+  {
+    id: 5, name: 'The Haunted Keep',
+    enemyHP: 170, playerHP: 110,
+    unitPool: [0, 1, 2, 3],
+    enemyAttackDmg: 8, enemyAttackInterval: 3,
+    enemies: [
+      { name: 'Ghost', emoji: '👻', hp: 25 },
+      { name: 'Wraith', emoji: '🌫️', hp: 30 },
+      { name: 'Banshee', emoji: '😱', hp: 20 },
+    ],
+    desc: 'Spirits haunt these halls...'
+  },
+  {
+    id: 6, name: 'Demon Gate',
+    enemyHP: 200, playerHP: 120,
+    unitPool: [0, 1, 2, 3, 4],
+    enemyAttackDmg: 9, enemyAttackInterval: 2,
+    enemies: [
+      { name: 'Imp', emoji: '😈', hp: 20 },
+      { name: 'Demon', emoji: '👿', hp: 35 },
+      { name: 'Hellhound', emoji: '🔥', hp: 30 },
+    ],
+    desc: 'A portal to the underworld opens!'
+  },
+  {
+    id: 7, name: 'Troll Bridge',
+    enemyHP: 230, playerHP: 120,
+    unitPool: [0, 1, 2, 3, 4],
+    enemyAttackDmg: 10, enemyAttackInterval: 2,
+    enemies: [
+      { name: 'Troll', emoji: '🧌', hp: 45 },
+      { name: 'Rock Troll', emoji: '🪨', hp: 50 },
+    ],
+    desc: 'Massive trolls guard the bridge!'
+  },
+  {
+    id: 8, name: 'Dragon\'s Lair',
+    enemyHP: 260, playerHP: 130,
+    unitPool: [0, 1, 2, 3, 4],
+    enemyAttackDmg: 12, enemyAttackInterval: 2,
+    enemies: [
+      { name: 'Wyvern', emoji: '🦎', hp: 40 },
+      { name: 'Drake', emoji: '🐉', hp: 50 },
+      { name: 'Dragon', emoji: '🐲', hp: 60 },
+    ],
+    desc: 'Enter the dragon\'s domain!'
+  },
+  {
+    id: 9, name: 'Lich King\'s Throne',
+    enemyHP: 300, playerHP: 130,
+    unitPool: [0, 1, 2, 3, 4],
+    enemyAttackDmg: 14, enemyAttackInterval: 2,
+    enemies: [
+      { name: 'Death Knight', emoji: '🗡️', hp: 45 },
+      { name: 'Necromancer', emoji: '☠️', hp: 35 },
+      { name: 'Lich', emoji: '👑', hp: 55 },
+    ],
+    desc: 'The undead king awaits...'
+  },
+  {
+    id: 10, name: 'The Dark Lord',
+    enemyHP: 350, playerHP: 140,
+    unitPool: [0, 1, 2, 3, 4],
+    enemyAttackDmg: 16, enemyAttackInterval: 2,
+    enemies: [
+      { name: 'Shadow Guard', emoji: '⚫', hp: 50 },
+      { name: 'Dark Mage', emoji: '🌀', hp: 40 },
+      { name: 'Dark Lord', emoji: '😈', hp: 80 },
+    ],
+    desc: 'The final battle for the realm!'
+  },
+];
+
+// ==================== GAME STATE ====================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let gameState = 'title'; // title, levelselect, playing, victory, defeat
+let currentLevel = null;
+let selectedLevel = 0;
+let unlockedLevels = 1;
+let completedLevels = new Set();
+let totalScore = 0;
+
+// In-game state
+let grid = []; // 2D array [row][col] of unit objects or null
+let selectedCell = null; // {row, col}
+let playerHP = 100;
+let playerMaxHP = 100;
+let enemyHP = 100;
+let enemyMaxHP = 100;
+let turn = 1;
+let movesThisTurn = 0;
+let maxMovesPerTurn = 3;
+let score = 0;
+let animations = []; // active animations
+let chargingFormations = []; // formations charging to attack
+let enemyAttacks = []; // incoming enemy attacks
+let walls = []; // active walls
+let combatLog = [];
+let isAnimating = false;
+
+// ==================== UNIT CLASS ====================
+function createUnit(typeId) {
+  const t = UNIT_TYPES[typeId];
+  return {
+    typeId: typeId,
+    color: t.color,
+    icon: t.icon,
+    name: t.name,
+    power: t.power,
+    chargeTime: t.chargeTime,
+    charging: false,
+    chargeLeft: 0,
+    isWall: false,
+    wallHP: 0,
+  };
+}
+
+// ==================== GRID MANAGEMENT ====================
+function initGrid(level) {
+  grid = [];
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      const typeId = level.unitPool[Math.floor(Math.random() * level.unitPool.length)];
+      grid[r][c] = createUnit(typeId);
+    }
+  }
+  // Clear initial matches
+  resolveInitialMatches(level);
+}
+
+function resolveInitialMatches(level) {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!grid[r][c]) continue;
+      // Check vertical match of 3
+      if (r >= 2 && grid[r-1][c] && grid[r-2][c] &&
+          grid[r][c].typeId === grid[r-1][c].typeId &&
+          grid[r][c].typeId === grid[r-2][c].typeId) {
+        // Change this unit's type
+        let newType;
+        do {
+          newType = level.unitPool[Math.floor(Math.random() * level.unitPool.length)];
+        } while (newType === grid[r][c].typeId);
+        grid[r][c] = createUnit(newType);
+      }
+      // Check horizontal match of 3
+      if (c >= 2 && grid[r][c-1] && grid[r][c-2] &&
+          grid[r][c].typeId === grid[r][c-1].typeId &&
+          grid[r][c].typeId === grid[r][c-2].typeId) {
+        let newType;
+        do {
+          newType = level.unitPool[Math.floor(Math.random() * level.unitPool.length)];
+        } while (newType === grid[r][c].typeId);
+        grid[r][c] = createUnit(newType);
+      }
+    }
+  }
+}
+
+function fillEmptySpaces(level) {
+  // Gravity: units fall down
+  for (let c = 0; c < COLS; c++) {
+    let writeRow = ROWS - 1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (grid[r][c] && !grid[r][c].charging && !grid[r][c].isWall) {
+        if (writeRow !== r) {
+          grid[writeRow][c] = grid[r][c];
+          grid[r][c] = null;
+        }
+        writeRow--;
+      } else if (grid[r][c] && (grid[r][c].charging || grid[r][c].isWall)) {
+        // charging/wall units stay in place, skip past them
+        if (writeRow === r) writeRow--;
+      }
+    }
+    // Fill empty spots at top with new units
+    for (let r = writeRow; r >= 0; r--) {
+      if (!grid[r][c]) {
+        const typeId = level.unitPool[Math.floor(Math.random() * level.unitPool.length)];
+        grid[r][c] = createUnit(typeId);
+      }
+    }
+  }
+}
+
+// ==================== MATCH DETECTION ====================
+function checkMatches() {
+  let matched = false;
+
+  // Check vertical matches (columns) - these become ATTACKS
+  for (let c = 0; c < COLS; c++) {
+    for (let r = ROWS - 1; r >= 2; r--) {
+      if (!grid[r][c] || !grid[r-1][c] || !grid[r-2][c]) continue;
+      if (grid[r][c].charging || grid[r-1][c].charging || grid[r-2][c].charging) continue;
+      if (grid[r][c].isWall || grid[r-1][c].isWall || grid[r-2][c].isWall) continue;
+      if (grid[r][c].typeId === grid[r-1][c].typeId &&
+          grid[r][c].typeId === grid[r-2][c].typeId) {
+        // Form attack! The bottom unit becomes the "formation"
+        const unit = grid[r][c];
+        const totalPower = unit.power * 3;
+        const formation = {
+          col: c,
+          row: r - 2, // placed at top of the match
+          typeId: unit.typeId,
+          color: unit.color,
+          icon: unit.icon,
+          name: unit.name,
+          power: totalPower,
+          chargeTime: unit.chargeTime,
+          chargeLeft: unit.chargeTime,
+          charging: true,
+          isWall: false,
+          wallHP: 0,
+        };
+        grid[r][c] = null;
+        grid[r-1][c] = null;
+        grid[r-2][c] = formation;
+        matched = true;
+
+        addAnimation({
+          type: 'formation',
+          col: c, row: r - 2,
+          color: unit.color,
+          timer: 30,
+        });
+      }
+    }
+  }
+
+  // Check horizontal matches (rows) - these become WALLS
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c <= COLS - 3; c++) {
+      if (!grid[r][c] || !grid[r][c+1] || !grid[r][c+2]) continue;
+      if (grid[r][c].charging || grid[r][c+1].charging || grid[r][c+2].charging) continue;
+      if (grid[r][c].isWall || grid[r][c+1].isWall || grid[r][c+2].isWall) continue;
+      if (grid[r][c].typeId === grid[r][c+1].typeId &&
+          grid[r][c].typeId === grid[r][c+2].typeId) {
+        // Form wall!
+        const unit = grid[r][c];
+        const wallHP = unit.power * 3;
+        for (let i = 0; i < 3; i++) {
+          grid[r][c+i] = {
+            typeId: unit.typeId,
+            color: unit.color,
+            icon: '🧱',
+            name: 'Wall',
+            power: 0,
+            chargeTime: 0,
+            chargeLeft: 0,
+            charging: false,
+            isWall: true,
+            wallHP: wallHP,
+          };
+        }
+        matched = true;
+
+        addAnimation({
+          type: 'wall',
+          col: c, row: r,
+          color: unit.color,
+          timer: 30,
+        });
+      }
+    }
+  }
+
+  return matched;
+}
+
+// ==================== COMBAT ====================
+function processChargingFormations() {
+  let damage = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const unit = grid[r][c];
+      if (unit && unit.charging) {
+        unit.chargeLeft--;
+        if (unit.chargeLeft <= 0) {
+          // ATTACK! Deal damage to enemy
+          damage += unit.power;
+          addAnimation({
+            type: 'attack',
+            col: c, row: r,
+            color: unit.color,
+            power: unit.power,
+            timer: 40,
+          });
+          grid[r][c] = null;
+        }
+      }
+    }
+  }
+  if (damage > 0) {
+    enemyHP = Math.max(0, enemyHP - damage);
+    score += damage * 10;
+    addAnimation({
+      type: 'damage_enemy',
+      damage: damage,
+      timer: 60,
+    });
+  }
+}
+
+function processEnemyAttack() {
+  if (!currentLevel) return;
+  if (turn % currentLevel.enemyAttackInterval === 0) {
+    const dmg = currentLevel.enemyAttackDmg;
+    // Check for walls to absorb damage
+    let remainingDmg = dmg;
+    // Find topmost walls
+    for (let r = 0; r < ROWS && remainingDmg > 0; r++) {
+      for (let c = 0; c < COLS && remainingDmg > 0; c++) {
+        if (grid[r][c] && grid[r][c].isWall) {
+          const absorbed = Math.min(grid[r][c].wallHP, remainingDmg);
+          grid[r][c].wallHP -= absorbed;
+          remainingDmg -= absorbed;
+          if (grid[r][c].wallHP <= 0) {
+            grid[r][c] = null;
+          }
+          if (remainingDmg <= 0) break;
+        }
+      }
+      if (remainingDmg <= 0) break;
+    }
+
+    if (remainingDmg > 0) {
+      playerHP = Math.max(0, playerHP - remainingDmg);
+    }
+
+    // Pick a random enemy for the attack animation
+    const enemy = currentLevel.enemies[Math.floor(Math.random() * currentLevel.enemies.length)];
+    addAnimation({
+      type: 'enemy_attack',
+      emoji: enemy.emoji,
+      name: enemy.name,
+      damage: dmg,
+      absorbed: dmg - remainingDmg,
+      timer: 60,
+    });
+
+    // Also drop some enemy units into top rows sometimes
+    const attackCol = Math.floor(Math.random() * COLS);
+    enemyAttacks.push({
+      col: attackCol,
+      emoji: enemy.emoji,
+      y: 0,
+      speed: 2,
+    });
+  }
+}
+
+// ==================== SWAP LOGIC ====================
+function swapUnits(r1, c1, r2, c2) {
+  // Can only swap adjacent
+  const dr = Math.abs(r1 - r2);
+  const dc = Math.abs(c1 - c2);
+  if (dr + dc !== 1) return false;
+
+  const u1 = grid[r1][c1];
+  const u2 = grid[r2][c2];
+
+  // Can't swap charging or wall units
+  if (u1 && (u1.charging || u1.isWall)) return false;
+  if (u2 && (u2.charging || u2.isWall)) return false;
+
+  grid[r1][c1] = u2;
+  grid[r2][c2] = u1;
+  return true;
+}
+
+function deleteUnit(r, c) {
+  const unit = grid[r][c];
+  if (!unit) return false;
+  if (unit.charging || unit.isWall) return false;
+  grid[r][c] = null;
+  return true;
+}
+
+// ==================== ANIMATIONS ====================
+function addAnimation(anim) {
+  animations.push(anim);
+}
+
+function updateAnimations() {
+  animations = animations.filter(a => {
+    a.timer--;
+    return a.timer > 0;
+  });
+}
+
+// ==================== RENDERING ====================
+function draw() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  bgGrad.addColorStop(0, '#2c0a3e');
+  bgGrad.addColorStop(0.3, '#1a0a2e');
+  bgGrad.addColorStop(1, '#0d0520');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Enemy zone (top)
+  ctx.fillStyle = 'rgba(200, 50, 50, 0.08)';
+  ctx.fillRect(0, 0, CANVAS_W, ENEMY_ZONE_H);
+
+  // Draw enemy army preview
+  if (currentLevel) {
+    drawEnemyZone();
+  }
+
+  // Draw separator line
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, ENEMY_ZONE_H);
+  ctx.lineTo(CANVAS_W, ENEMY_ZONE_H);
+  ctx.stroke();
+
+  // Draw grid
+  drawGrid();
+
+  // Draw enemy attacks falling
+  drawEnemyAttacks();
+
+  // Draw animations
+  drawAnimations();
+
+  // Update health bars
+  updateHealthBars();
+}
+
+function drawEnemyZone() {
+  if (!currentLevel) return;
+  const enemies = currentLevel.enemies;
+  const spacing = CANVAS_W / (enemies.length + 1);
+
+  for (let i = 0; i < enemies.length; i++) {
+    const x = spacing * (i + 1);
+    const y = ENEMY_ZONE_H / 2;
+
+    // Pulsing glow
+    const pulse = Math.sin(Date.now() / 500 + i) * 0.3 + 0.7;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = 'rgba(200,50,50,0.3)';
+    ctx.beginPath();
+    ctx.arc(x, y, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Enemy emoji
+    ctx.font = '32px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(enemies[i].emoji, x, y - 4);
+
+    // Enemy name
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#ff9999';
+    ctx.fillText(enemies[i].name, x, y + 24);
+  }
+}
+
+function drawGrid() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = GRID_OFFSET_X + c * CELL;
+      const y = GRID_OFFSET_Y + r * CELL;
+
+      // Cell background
+      ctx.fillStyle = (r + c) % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)';
+      ctx.fillRect(x, y, CELL, CELL);
+
+      // Cell border
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y, CELL, CELL);
+
+      const unit = grid[r][c];
+      if (!unit) continue;
+
+      // Draw unit
+      drawUnit(unit, x, y, r, c);
+    }
+  }
+
+  // Draw selection highlight
+  if (selectedCell) {
+    const x = GRID_OFFSET_X + selectedCell.col * CELL;
+    const y = GRID_OFFSET_Y + selectedCell.row * CELL;
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 2, y + 2, CELL - 4, CELL - 4);
+
+    // Glow effect
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(x + 2, y + 2, CELL - 4, CELL - 4);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawUnit(unit, x, y, row, col) {
+  const cx = x + CELL / 2;
+  const cy = y + CELL / 2;
+
+  if (unit.isWall) {
+    // Draw wall
+    ctx.fillStyle = unit.color;
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(x + 3, y + 3, CELL - 6, CELL - 6);
+    ctx.globalAlpha = 1;
+
+    // Brick pattern
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 3, y + 3, CELL - 6, CELL - 6);
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + CELL/2);
+    ctx.lineTo(x + CELL - 3, y + CELL/2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + CELL/2, y + 3);
+    ctx.lineTo(x + CELL/2, y + CELL/2);
+    ctx.stroke();
+
+    // Wall HP
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(unit.wallHP, cx, cy);
+    return;
+  }
+
+  if (unit.charging) {
+    // Charging formation - pulsing
+    const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
+    ctx.globalAlpha = pulse;
+
+    // Arrow pointing up
+    ctx.fillStyle = unit.color;
+    ctx.beginPath();
+    ctx.moveTo(cx, y + 5);
+    ctx.lineTo(x + CELL - 6, y + CELL - 8);
+    ctx.lineTo(x + 6, y + CELL - 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Charge counter
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(unit.chargeLeft, cx, cy + 4);
+
+    // Power display
+    ctx.font = '9px sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('ATK:' + unit.power, cx, y + CELL - 4);
+    return;
+  }
+
+  // Normal unit
+  // Colored circle background
+  ctx.fillStyle = unit.color;
+  ctx.globalAlpha = 0.25;
+  ctx.beginPath();
+  ctx.arc(cx, cy, CELL / 2 - 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Border circle
+  ctx.strokeStyle = unit.color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, CELL / 2 - 6, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Icon
+  ctx.font = '22px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(unit.icon, cx, cy);
+}
+
+function drawEnemyAttacks() {
+  enemyAttacks.forEach(atk => {
+    ctx.font = '28px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(atk.emoji, GRID_OFFSET_X + atk.col * CELL + CELL/2, atk.y);
+  });
+}
+
+function drawAnimations() {
+  animations.forEach(a => {
+    if (a.type === 'formation') {
+      const x = GRID_OFFSET_X + a.col * CELL + CELL/2;
+      const y = GRID_OFFSET_Y + a.row * CELL + CELL/2;
+      const alpha = a.timer / 30;
+      const radius = (1 - alpha) * 40 + 20;
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.fillStyle = a.color;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    if (a.type === 'attack') {
+      const x = GRID_OFFSET_X + a.col * CELL + CELL/2;
+      const baseY = GRID_OFFSET_Y + a.row * CELL + CELL/2;
+      const progress = 1 - (a.timer / 40);
+      const y = baseY - progress * (baseY + 50);
+      ctx.globalAlpha = a.timer / 40;
+      ctx.fillStyle = a.color;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 15);
+      ctx.lineTo(x + 10, y + 5);
+      ctx.lineTo(x - 10, y + 5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Damage number
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd700';
+      ctx.fillText('-' + a.power, x, y - 20);
+      ctx.globalAlpha = 1;
+    }
+
+    if (a.type === 'damage_enemy') {
+      const alpha = a.timer / 60;
+      ctx.globalAlpha = alpha;
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('-' + a.damage, CANVAS_W / 2, 50 + (1 - alpha) * 30);
+      ctx.globalAlpha = 1;
+    }
+
+    if (a.type === 'enemy_attack') {
+      const alpha = a.timer / 60;
+      const progress = 1 - (a.timer / 60);
+      ctx.globalAlpha = alpha;
+
+      // Enemy attack coming down
+      ctx.font = '36px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(a.emoji, CANVAS_W / 2, 30 + progress * 80);
+
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('-' + a.damage + (a.absorbed > 0 ? ' (' + a.absorbed + ' blocked)' : ''),
+        CANVAS_W / 2, CANVAS_H - 20 - (1 - alpha) * 30);
+
+      ctx.globalAlpha = 1;
+    }
+
+    if (a.type === 'wall') {
+      const x = GRID_OFFSET_X + a.col * CELL;
+      const y = GRID_OFFSET_Y + a.row * CELL;
+      const alpha = a.timer / 30;
+      ctx.globalAlpha = alpha * 0.4;
+      ctx.fillStyle = a.color;
+      ctx.fillRect(x - 5, y - 5, CELL * 3 + 10, CELL + 10);
+      ctx.globalAlpha = 1;
+    }
+  });
+}
+
+function updateHealthBars() {
+  const eFill = document.querySelector('#enemy-health .fill');
+  const eLabel = document.querySelector('#enemy-health .label');
+  eFill.style.width = (enemyHP / enemyMaxHP * 100) + '%';
+  eLabel.textContent = `Enemy: ${enemyHP}/${enemyMaxHP}`;
+
+  const pFill = document.querySelector('#player-health .fill');
+  const pLabel = document.querySelector('#player-health .label');
+  pFill.style.width = (playerHP / playerMaxHP * 100) + '%';
+  pLabel.textContent = `You: ${playerHP}/${playerMaxHP}`;
+
+  document.getElementById('score-display').textContent = 'Score: ' + score;
+  document.getElementById('turns-display').textContent = `Turn: ${turn} | Moves: ${movesThisTurn}/${maxMovesPerTurn}`;
+}
+
+// ==================== TURN MANAGEMENT ====================
+function endTurn() {
+  if (isAnimating) return;
+
+  // Process charging formations
+  processChargingFormations();
+
+  // Check for new matches after gravity
+  fillEmptySpaces(currentLevel);
+  let safetyCounter = 0;
+  while (checkMatches() && safetyCounter < 20) {
+    fillEmptySpaces(currentLevel);
+    safetyCounter++;
+  }
+
+  // Enemy attacks
+  processEnemyAttack();
+
+  // Check win/lose
+  if (enemyHP <= 0) {
+    gameState = 'victory';
+    showVictory();
+    return;
+  }
+  if (playerHP <= 0) {
+    gameState = 'defeat';
+    showDefeat();
+    return;
+  }
+
+  turn++;
+  movesThisTurn = 0;
+}
+
+// ==================== INPUT HANDLING ====================
+canvas.addEventListener('click', (e) => {
+  if (gameState !== 'playing') return;
+  if (isAnimating) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+  const my = (e.clientY - rect.top) * (CANVAS_H / rect.height);
+
+  const col = Math.floor((mx - GRID_OFFSET_X) / CELL);
+  const row = Math.floor((my - GRID_OFFSET_Y) / CELL);
+
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
+    selectedCell = null;
+    return;
+  }
+
+  if (selectedCell) {
+    // Try to swap
+    const sr = selectedCell.row;
+    const sc = selectedCell.col;
+
+    if (sr === row && sc === col) {
+      selectedCell = null;
+      return;
+    }
+
+    if (Math.abs(sr - row) + Math.abs(sc - col) === 1) {
+      if (swapUnits(sr, sc, row, col)) {
+        movesThisTurn++;
+
+        // Check for matches
+        fillEmptySpaces(currentLevel);
+        let safetyCounter = 0;
+        while (checkMatches() && safetyCounter < 20) {
+          fillEmptySpaces(currentLevel);
+          safetyCounter++;
+        }
+
+        if (movesThisTurn >= maxMovesPerTurn) {
+          selectedCell = null;
+          setTimeout(() => endTurn(), 300);
+          return;
+        }
+      }
+    }
+    selectedCell = null;
+  } else {
+    // Select cell
+    if (grid[row][col]) {
+      selectedCell = { row, col };
+    }
+  }
+});
+
+// Delete button
+document.getElementById('btn-delete').addEventListener('click', () => {
+  if (gameState !== 'playing') return;
+  if (!selectedCell) return;
+  if (movesThisTurn >= maxMovesPerTurn) return;
+
+  if (deleteUnit(selectedCell.row, selectedCell.col)) {
+    movesThisTurn++;
+    selectedCell = null;
+
+    fillEmptySpaces(currentLevel);
+    let safetyCounter = 0;
+    while (checkMatches() && safetyCounter < 20) {
+      fillEmptySpaces(currentLevel);
+      safetyCounter++;
+    }
+
+    if (movesThisTurn >= maxMovesPerTurn) {
+      setTimeout(() => endTurn(), 300);
+    }
+  }
+});
+
+// End turn button
+document.getElementById('btn-end-turn').addEventListener('click', () => {
+  if (gameState !== 'playing') return;
+  endTurn();
+});
+
+// ==================== SCREEN MANAGEMENT ====================
+function hideAllOverlays() {
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('level-select-screen').style.display = 'none';
+  document.getElementById('victory-screen').style.display = 'none';
+  document.getElementById('defeat-screen').style.display = 'none';
+}
+
+function showTitle() {
+  hideAllOverlays();
+  gameState = 'title';
+  document.getElementById('title-screen').style.display = 'flex';
+}
+
+function showLevelSelect() {
+  hideAllOverlays();
+  gameState = 'levelselect';
+  document.getElementById('level-select-screen').style.display = 'flex';
+
+  const container = document.getElementById('level-buttons');
+  container.innerHTML = '';
+
+  for (let i = 0; i < LEVELS.length; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'level-btn';
+    btn.textContent = i + 1;
+
+    if (completedLevels.has(i + 1)) {
+      btn.classList.add('completed');
+    } else if (i + 1 <= unlockedLevels) {
+      btn.classList.add('unlocked');
+    }
+
+    if (i + 1 <= unlockedLevels) {
+      btn.addEventListener('click', () => selectLevelPreview(i));
+    }
+
+    container.appendChild(btn);
+  }
+
+  // Auto-select first available level
+  selectLevelPreview(Math.min(unlockedLevels - 1, LEVELS.length - 1));
+}
+
+function selectLevelPreview(idx) {
+  selectedLevel = idx;
+  const level = LEVELS[idx];
+  const preview = document.getElementById('level-preview');
+  preview.innerHTML = `
+    <h2 style="color:#ffd700;margin:8px 0 4px">${level.name}</h2>
+    <p>${level.desc}</p>
+    <p style="color:#ff9999">Enemy HP: ${level.enemyHP} | Attack: ${level.enemyAttackDmg} every ${level.enemyAttackInterval} turns</p>
+    <div class="enemy-preview">
+      ${level.enemies.map(e => `
+        <div class="enemy-card">
+          <div class="emoji">${e.emoji}</div>
+          <div>${e.name}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.getElementById('start-level-btn').style.display = 'block';
+}
+
+function startSelectedLevel() {
+  startLevel(selectedLevel);
+}
+
+function startLevel(idx) {
+  hideAllOverlays();
+  gameState = 'playing';
+
+  currentLevel = LEVELS[idx];
+  enemyHP = currentLevel.enemyHP;
+  enemyMaxHP = currentLevel.enemyHP;
+  playerHP = currentLevel.playerHP;
+  playerMaxHP = currentLevel.playerHP;
+  turn = 1;
+  movesThisTurn = 0;
+  score = 0;
+  animations = [];
+  chargingFormations = [];
+  enemyAttacks = [];
+  walls = [];
+  selectedCell = null;
+
+  document.getElementById('level-display').textContent = 'Level ' + currentLevel.id;
+  document.getElementById('level-name').textContent = currentLevel.name;
+
+  initGrid(currentLevel);
+}
+
+function showVictory() {
+  hideAllOverlays();
+  document.getElementById('victory-screen').style.display = 'flex';
+  document.getElementById('victory-text').textContent =
+    `You defeated ${currentLevel.name}! Score: ${score}`;
+
+  completedLevels.add(currentLevel.id);
+  totalScore += score;
+  if (currentLevel.id >= unlockedLevels && currentLevel.id < LEVELS.length) {
+    unlockedLevels = currentLevel.id + 1;
+  }
+}
+
+function showDefeat() {
+  hideAllOverlays();
+  document.getElementById('defeat-screen').style.display = 'flex';
+  document.getElementById('defeat-text').textContent =
+    `Your army fell at ${currentLevel.name}. Score: ${score}`;
+}
+
+function retryLevel() {
+  startLevel(selectedLevel);
+}
+
+// ==================== GAME LOOP ====================
+function gameLoop() {
+  if (gameState === 'playing') {
+    // Update enemy attacks (falling animation)
+    enemyAttacks = enemyAttacks.filter(atk => {
+      atk.y += atk.speed;
+      return atk.y < CANVAS_H;
+    });
+
+    updateAnimations();
+    draw();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+// Start game loop
+gameLoop();
+</script>
+</body>
+</html>
