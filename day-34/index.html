@@ -25,10 +25,9 @@
     p.subtitle { color: #9ca3af; margin-bottom: 0.5rem; font-size: 0.85rem; }
     canvas { border: 2px solid #3b3b5c; border-radius: 8px; background: #1e1e2e; }
     #ui { color: #e0e0ff; font-size: 0.85rem; max-width: 480px; width: 100%; display: flex; justify-content: space-between; margin-top: 0.5rem; }
-  </style>
+</style>
 </head>
 <body>
-  <nav><a href="../index.html">&larr; Back to Gallery</a></nav>
   <h1>Pingolf</h1>
   <p class="subtitle">Pinball + Golf: Tap sides for flippers, drag bottom to launch</p>
   <canvas id="gc"></canvas>
@@ -488,5 +487,6 @@ function gameLoop() {
 generateHole(0);
 gameLoop();
 </script>
+<script src="../header.js"></script>
 </body>
 </html>

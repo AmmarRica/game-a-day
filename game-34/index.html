@@ -21,7 +21,6 @@ canvas { border: 2px solid #a78bfa; margin-top: 5px; }
 </style>
 </head>
 <body>
-<nav><a href="../index.html">← Back</a></nav>
 <canvas id="game" width="700" height="400"></canvas>
 <div id="controls">
   <button class="weather-btn" data-weather="rain" onclick="toggleWeather('rain')">🌧 Rain<br><small>More fumbles</small><div class="cooldown-bar" id="cd-rain"></div></button>
@@ -787,5 +786,6 @@ function gameLoop() {
 
 gameLoop();
 </script>
+<script src="../header.js"></script>
 </body>
 </html>

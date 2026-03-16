@@ -4,7 +4,16 @@
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
       "Bash(git add:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(for d:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Ammar/Desktop/GameDev/WebGames/game-a-day/$d/**)",
+      "Bash(done)",
+      "Bash(cd:*)",
+      "Bash(wc:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)"
     ]
   }
 }

@@ -31,10 +31,9 @@
       touch-action: none;
     }
     #ui { color: #9ca3af; font-size: 0.85rem; margin-top: 0.5rem; text-align: center; }
-  </style>
+</style>
 </head>
 <body>
-  <nav><a href="../index.html">&larr; Back to Gallery</a></nav>
   <h1>Hot Foot</h1>
   <p class="sub">Tap platforms to jump before they burn!</p>
   <canvas id="game" width="480" height="640"></canvas>
@@ -493,5 +492,6 @@ function gameLoop(ts) {
 lastT = performance.now();
 requestAnimationFrame(gameLoop);
 </script>
+<script src="../header.js"></script>
 </body>
 </html>
