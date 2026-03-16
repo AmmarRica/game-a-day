@@ -106,6 +106,32 @@
       helpBtn.classList.toggle('active');
     });
 
+    // Fullscreen toggle
+    const fsBtn = header.querySelector('.gad-fullscreen');
+    fsBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen().catch(function () {
+          // Fallback: toggle CSS-only fullscreen mode
+          document.body.classList.toggle('gad-fullscreen-active');
+          fsBtn.classList.toggle('active');
+        });
+      }
+    });
+
+    document.addEventListener('fullscreenchange', function () {
+      if (document.fullscreenElement) {
+        document.body.classList.add('gad-fullscreen-active');
+        fsBtn.classList.add('active');
+      } else {
+        document.body.classList.remove('gad-fullscreen-active');
+        fsBtn.classList.remove('active');
+      }
+    });
+
     // Insert into page
     if (spacer) document.body.insertBefore(spacer, document.body.firstChild);
     document.body.insertBefore(header, document.body.firstChild);

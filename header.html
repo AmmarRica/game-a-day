@@ -3,6 +3,7 @@
     <a class="gad-btn gad-prev" href="#" aria-label="Previous game">&#9664;</a>
     <a class="gad-btn gad-home" href="#" aria-label="Home">&#8962;</a>
     <div class="gad-title"></div>
+    <button class="gad-btn gad-fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
     <button class="gad-help-toggle" aria-label="How to play">?</button>
     <a class="gad-btn gad-next" href="#" aria-label="Next game">&#9654;</a>
   </div>
@@ -70,6 +71,45 @@
     white-space: nowrap;
     min-width: 0;
   }
+  .gad-fullscreen {
+    font-size: 1.1rem;
+    padding: 0.5rem;
+  }
+  .gad-fullscreen.active {
+    background: #a78bfa;
+    color: #0f0f1a;
+    border-color: #a78bfa;
+  }
+
+  /* Responsive canvas: ensure game canvases fit within viewport */
+  canvas#game {
+    max-width: 100vw !important;
+    max-height: calc(100vh - 56px) !important;
+    object-fit: contain;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Fullscreen mode: hide header, let canvas fill screen */
+  .gad-fullscreen-active .gad-header {
+    display: none !important;
+  }
+  .gad-fullscreen-active .gad-spacer {
+    display: none !important;
+  }
+  .gad-fullscreen-active canvas#game {
+    max-height: 100vh !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    object-fit: contain;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99998;
+  }
+
   .gad-help-toggle {
     background: none;
     border: 1px solid #3b3b5c;
