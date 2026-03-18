@@ -32,6 +32,43 @@
       font-size: 1.1rem;
     }
 
+    .filter-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1.5rem auto 0;
+      max-width: 1200px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: #1e1e2e;
+      border: 1px solid #3b3b5c;
+      color: #9ca3af;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover {
+      border-color: #a78bfa;
+      color: #e0e0ff;
+    }
+
+    .filter-btn.active {
+      background: #a78bfa;
+      color: #0f0f1a;
+      border-color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .card.hidden-by-filter {
+      display: none;
+    }
+
     .section-title {
       text-align: center;
       font-size: 1.4rem;
@@ -120,6 +157,13 @@
     <h1>Game a Day</h1>
     <p>One small game built every day.</p>
   </header>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All Games</button>
+    <button class="filter-btn" data-filter="touch">Mobile / Touch</button>
+    <button class="filter-btn" data-filter="keyboard">Keyboard Only</button>
+    <button class="filter-btn" data-filter="both">Touch + Keyboard</button>
+  </div>
 
   <h2 class="section-title">Daily Games (2 Games)</h2>
   <div class="gallery">
@@ -648,15 +692,18 @@
     </a>
   </div>
 <script>
-  fetch('games.json').then(r => r.json()).then(function(games) {
+  fetch('games.json').then(function(r) { return r.json(); }).then(function(games) {
     var cards = document.querySelectorAll('.card');
     var map = {};
     games.forEach(function(g) { map[g.dir] = g.input; });
+
+    // Add input icons and data attributes to cards
     cards.forEach(function(card) {
       var href = card.getAttribute('href') || '';
       var dir = href.replace('/index.html', '').replace('index.html', '').replace(/\/$/, '');
       var input = map[dir];
       if (!input) return;
+      card.setAttribute('data-input', input);
       var icons = document.createElement('div');
       icons.className = 'input-icons';
       if (input === 'touch' || input === 'both') {
@@ -666,6 +713,31 @@
         icons.innerHTML += '<span class="input-icon keyboard" title="Keyboard required">&#x2328; Keys</span>';
       }
       card.appendChild(icons);
+    });
+
+    // Filter buttons
+    var filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        filterBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var filter = btn.getAttribute('data-filter');
+        cards.forEach(function(card) {
+          var input = card.getAttribute('data-input');
+          if (filter === 'all') {
+            card.classList.remove('hidden-by-filter');
+          } else if (filter === 'touch') {
+            // Show games playable by touch (touch or both)
+            card.classList.toggle('hidden-by-filter', input !== 'touch' && input !== 'both');
+          } else if (filter === 'keyboard') {
+            // Show keyboard-only games
+            card.classList.toggle('hidden-by-filter', input !== 'keyboard');
+          } else if (filter === 'both') {
+            // Show games that support both
+            card.classList.toggle('hidden-by-filter', input !== 'both');
+          }
+        });
+      });
     });
   });
 </script>

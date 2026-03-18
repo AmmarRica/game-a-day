@@ -135,6 +135,35 @@
     // Insert into page
     if (spacer) document.body.insertBefore(spacer, document.body.firstChild);
     document.body.insertBefore(header, document.body.firstChild);
+
+    // Responsive canvas scaling
+    scaleCanvases();
+    window.addEventListener('resize', scaleCanvases);
+  }
+
+  function scaleCanvases() {
+    var headerH = document.body.classList.contains('gad-fullscreen-active') ? 0 : 56;
+    var maxW = window.innerWidth;
+    var maxH = window.innerHeight - headerH;
+    var canvases = document.querySelectorAll('canvas');
+    canvases.forEach(function (c) {
+      // Skip tiny canvases (likely UI elements)
+      if (c.width < 100 && c.height < 100) return;
+      c.classList.add('gad-scaled');
+      var cw = c.width;
+      var ch = c.height;
+      if (cw > maxW || ch > maxH) {
+        var scale = Math.min(maxW / cw, maxH / ch);
+        c.style.width = Math.floor(cw * scale) + 'px';
+        c.style.height = Math.floor(ch * scale) + 'px';
+      } else {
+        // Don't force size if it already fits
+        if (!c.style.width && !c.style.height) {
+          c.style.width = cw + 'px';
+          c.style.height = ch + 'px';
+        }
+      }
+    });
   }
 
   function init() {
